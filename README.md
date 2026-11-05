@@ -38,11 +38,16 @@ Leia o `LEIA-ME_PRIMEIRO.txt` que vem dentro do kit.
 
 ## Já instalou e as enciclopédias ou a IA não baixaram?
 
-Se a instalação mostrou **"[WinError 2] O sistema não pode encontrar o arquivo especificado"**,
-o seu computador não tem o programa curl do Windows, que o kit de 30/10 usava para os arquivos
-grandes. A correção faz o instalador baixar mesmo sem ele. Não precisa começar de novo:
+Vale para dois erros do kit de 30/10:
 
-1. Baixe a [**correção (36 KB)**](https://github.com/brenobernardes25-afk/biblioteca-offline/raw/correcao-curl/correcao/Correcao_curl_2026-11-04.zip).
+- a instalação mostrou **"[WinError 2] O sistema não pode encontrar o arquivo especificado"**
+  (o computador não tem o programa curl do Windows);
+- o instalador diz **"Sem internet"** com a internet funcionando (o Windows não tem todos os
+  certificados de segurança atualizados).
+
+A correção resolve os dois. Não precisa começar de novo:
+
+1. Baixe a [**correção (170 KB)**](https://github.com/brenobernardes25-afk/biblioteca-offline/raw/correcao-curl/correcao/Correcao_curl_2026-11-04.zip).
 2. Descompacte na **raiz** do HD, onde está o `INSTALAR_BIBLIOTECA.bat`, e escolha **substituir os arquivos**.
 3. Rode o `INSTALAR_BIBLIOTECA.bat` de novo: ele continua de onde parou.
 

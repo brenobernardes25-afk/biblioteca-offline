@@ -51,6 +51,15 @@ A correção resolve os dois. Não precisa começar de novo:
 2. Descompacte na **raiz** do HD, onde está o `INSTALAR_BIBLIOTECA.bat`, e escolha **substituir os arquivos**.
 3. Rode o `INSTALAR_BIBLIOTECA.bat` de novo: ele continua de onde parou.
 
+## Já instalou? Corrija os PDFs cortados
+
+Os kits até 05/11/2026 traziam 943 PDFs cortados no meio: saúde, livros da SciELO e alguns da Embrapa.
+O kit de 07/11 aponta para as versões inteiras. Não precisa começar de novo:
+
+1. Baixe o kit mais recente em **Releases**.
+2. Descompacte na **raiz** do HD, onde está o `INSTALAR_BIBLIOTECA.bat`, e escolha **substituir os arquivos**.
+3. Rode o `INSTALAR_BIBLIOTECA.bat`. Ele baixa só o que estava cortado (cerca de 12 GB).
+
 ## O que o kit contém
 
 O zip é pequeno (~28 MB) porque não leva o conteúdo em si. Ele traz:

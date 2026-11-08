@@ -33,7 +33,7 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
 
 ## Passo a passo
 
-1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-07.zip (28 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-07/Kit_Biblioteca_Offline_2026-11-07.zip)**.
+1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-08.zip (28 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-08/Kit_Biblioteca_Offline_2026-11-08.zip)**.
 2. Ligue o HD/SSD vazio no computador.
 3. Clique com o botão direito no zip › **Extrair tudo…**.
    - Em **"Os arquivos serão extraídos para esta pasta"**, escolha a **raiz** do HD/SSD, por exemplo `E:\`.
@@ -43,6 +43,11 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
      `INSTALAR_BIBLIOTECA.bat` e `ABRIR_BIBLIOTECA.bat`.
 4. Dê dois cliques em **`INSTALAR_BIBLIOTECA.bat`**.
    - Se aparecer *"O Windows protegeu o computador"*, clique em **Mais informações** › **Executar assim mesmo**.
+   - Na primeira vez, ele mostra **O QUE BAIXAR**, com o tamanho de cada parte e o espaço livre no disco:
+     - **para baixar tudo** (recomendado), só tecle **ENTER**;
+     - **para deixar algo de fora**, digite os números e tecle **ENTER**. Por exemplo, `3 10` deixa de fora a
+       Survivor Library (205 GB) e a literatura em inglês (150 GB). Depois tecle **ENTER** para confirmar.
+     - O essencial (saúde, sobrevivência, água e a IA) sempre vem.
    - Deixe a janela aberta. Ela mostra o andamento a cada 30 segundos.
    - **Se fechar, faltar luz ou cair a internet:** dê dois cliques de novo. Ele continua de onde parou e
      não baixa nada duas vezes.
@@ -50,6 +55,9 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
    Na primeira vez, o app monta o índice de busca, o que leva algumas horas. Dá para ir usando enquanto isso.
    **Esse índice é o que o celular usa para buscar dentro dos manuais**, por isso abra a biblioteca uma vez antes
    de levar o SSD para o celular.
+
+**Mudou de ideia sobre o que baixar?** Dê dois cliques em **`ESCOLHER_O_QUE_BAIXAR.bat`**. Nada do que já foi
+baixado é apagado. A atualização pela internet também respeita a sua escolha.
 
 Dentro do kit, o `LEIA-ME_PRIMEIRO.txt` explica tudo de novo, e o menu **Ajuda** do app também.
 
@@ -60,9 +68,10 @@ Dentro do kit, o `LEIA-ME_PRIMEIRO.txt` explica tudo de novo, e o menu **Ajuda**
 Os kits até 05/11/2026 traziam 943 PDFs cortados no meio: saúde, livros da SciELO e alguns da Embrapa.
 Não precisa começar de novo:
 
-1. Baixe o [kit mais recente](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-07/Kit_Biblioteca_Offline_2026-11-07.zip).
+1. Baixe o [kit mais recente](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-08/Kit_Biblioteca_Offline_2026-11-08.zip).
 2. Descompacte na **raiz** do HD, onde está o `INSTALAR_BIBLIOTECA.bat`, e escolha **substituir os arquivos**.
-3. Rode o `INSTALAR_BIBLIOTECA.bat`. Ele baixa só o que estava cortado (cerca de 12 GB).
+3. Rode o `INSTALAR_BIBLIOTECA.bat`. Na primeira vez com o kit novo, ele pergunta o que baixar: tecle **ENTER**
+   para continuar com tudo. Depois ele baixa só o que estava cortado (cerca de 12 GB).
 
 ### "[WinError 2]" ou "Sem internet" com a internet funcionando (kit de 30/10)
 

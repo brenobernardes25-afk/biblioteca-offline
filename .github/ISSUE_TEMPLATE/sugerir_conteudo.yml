@@ -1,0 +1,68 @@
+name: Sugerir conteúdo
+description: Sugira um livro, manual, enciclopédia ou curso para entrar na biblioteca
+title: "Sugestão: "
+labels: ["sugestão de conteúdo"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado! Só entra conteúdo que pode ser redistribuído e de fonte confiável. Veja o CONTRIBUINDO.md.
+  - type: input
+    id: nome
+    attributes:
+      label: O que é
+      description: Nome do material.
+      placeholder: "Ex.: Dicionário de Libras do INES"
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link para baixar
+      placeholder: "https://..."
+    validations:
+      required: true
+  - type: input
+    id: licenca
+    attributes:
+      label: Licença
+      description: Domínio público, Creative Commons, uso livre... Se não souber, diga onde viu.
+    validations:
+      required: true
+  - type: dropdown
+    id: categoria
+    attributes:
+      label: Categoria
+      options:
+        - Saúde e primeiros socorros
+        - Sobrevivência, água e desastres
+        - Agricultura e criação
+        - Consertos, ofícios e técnicas
+        - Enciclopédia ou dicionário
+        - Livros acadêmicos e didáticos
+        - Literatura
+        - Acessibilidade (Libras, braile...)
+        - Outra
+    validations:
+      required: true
+  - type: dropdown
+    id: idioma
+    attributes:
+      label: Idioma
+      options:
+        - Português
+        - Inglês
+        - Espanhol
+        - Outro
+    validations:
+      required: true
+  - type: input
+    id: tamanho
+    attributes:
+      label: Tamanho (se souber)
+      placeholder: "Ex.: 2 GB"
+  - type: textarea
+    id: porque
+    attributes:
+      label: Por que ajuda
+      description: Em que situação esse material é útil?

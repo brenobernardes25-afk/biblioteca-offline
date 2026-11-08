@@ -1,0 +1,2 @@
+cacert.pem: certificados raiz da Mozilla (pacote certifi 2026.10.18, licença MPL-2.0).
+Usados para conexões seguras (HTTPS) em computadores cujo Windows ainda não tem todos os certificados.

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Os manuais do Exército Brasileiro só existem em http://. Nenhum outro servidor pode usar HTTP. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">bdex.eb.mil.br</domain>
+    </domain-config>
+</network-security-config>

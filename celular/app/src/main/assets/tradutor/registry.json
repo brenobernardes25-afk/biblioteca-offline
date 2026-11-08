@@ -1,0 +1,19 @@
+{
+ "enpt": {
+  "vocab": {
+   "name": "modelos/vocab.enpt.spm",
+   "size": 816726,
+   "expectedSha256Hash": "d9f46182823d5bbc84201252b2dfcac28f63e561f0ec827ed858f241864c9def"
+  },
+  "lex": {
+   "name": "modelos/lex.50.50.enpt.s2t.bin",
+   "size": 3970340,
+   "expectedSha256Hash": "ccb4c31c9e1899d77a200e71a86958e6ef6c8649627d0bbf3f873b57d9f236bd"
+  },
+  "model": {
+   "name": "modelos/model.enpt.intgemm.alphas.bin",
+   "size": 31561787,
+   "expectedSha256Hash": "07892fd2544ee79dcb643615d8f2debb9793fae16842e87c328e27a3dd26a770"
+  }
+ }
+}

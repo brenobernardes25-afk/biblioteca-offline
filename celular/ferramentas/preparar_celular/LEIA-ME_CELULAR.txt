@@ -1,0 +1,47 @@
+BIBLIOTECA DE BOLSO - BAIXAR NO COMPUTADOR E PASSAR PARA O CELULAR
+==================================================================
+
+Criado por Breno Paiva - Instagram: @breno.paiva40
+Gratuito. Pode repassar à vontade, mas não venda.
+
+PARA QUE SERVE
+  Baixa no computador os arquivos da versão do celular. Depois você copia tudo pelo cabo USB.
+  É bom quando a internet do celular é fraca ou cara. Quem preferir pode baixar direto no celular:
+  é só abrir o app e tocar em Começar.
+
+QUAL VERSÃO ESCOLHER
+  Slim mínimo: 13 GB. Saúde, água, sobrevivência e o essencial da Embrapa.
+  Slim: 78 GB. Tudo do mínimo, mais a Wikipédia em português completa, manuais militares,
+        consertos e muito mais Embrapa.
+
+COMO FAZER
+  No computador (Windows 10 ou 11):
+  1. Descompacte este zip numa pasta, num disco com espaço para a versão escolhida.
+  2. Dê dois cliques em PREPARAR_CELULAR.bat, digite 1 ou 2 e tecle ENTER.
+     Pode levar horas. Se fechar ou cair a internet, abra de novo: ele continua de onde parou.
+     Se o HD da Biblioteca Offline estiver ligado, ele copia de lá em vez de baixar.
+  3. Ligue o celular no cabo USB. No aviso do celular, escolha Transferência de arquivos.
+  4. Copie a pasta BibliotecaDeBolso para a pasta Download do celular.
+
+  No celular:
+  5. Instale o app Biblioteca de Bolso e abra. Passo a passo da instalação, para cada marca de celular:
+     https://github.com/brenobernardes25-afk/biblioteca-offline/blob/main/guias/1_CELULAR_INSTALAR_O_APP.md
+  6. Toque em Começar e depois em Já preparei a pasta no computador.
+     (Se o app já estiver em uso: Downloads e versão > Trazer do computador.)
+  7. Toque em Escolher a pasta. O celular já abre na BibliotecaDeBolso: toque em Usar esta pasta e em Permitir.
+     (Se abrir em outro lugar, entre em Download, toque em BibliotecaDeBolso e siga.)
+  8. Deixe a tela aberta até aparecer Pronto.
+
+  Cada arquivo copiado e conferido sai da pasta de origem, para não ocupar o espaço duas vezes.
+  Para manter uma cópia na pasta, desligue a opção antes de escolher a pasta.
+
+SE ALGO FALHAR
+  - Faltou espaço no computador: libere espaço ou use outro disco e rode de novo.
+  - Faltou espaço no celular: apague fotos e vídeos ou prepare o Slim mínimo.
+  - Arquivo que não veio: fica em _o_que_faltou.txt. O celular tenta de novo pela internet.
+  - O celular não aparece no computador: troque o cabo e confira se escolheu Transferência de arquivos.
+  - A cópia parou no meio: copie de novo e escolha a pasta no app. O que já veio não se perde.
+
+Dentro do app, o ícone de interrogação (?) abre o manual completo. Não precisa de internet.
+
+Não substitui atendimento médico. Os textos pertencem aos seus autores e seguem as licenças de cada fonte.

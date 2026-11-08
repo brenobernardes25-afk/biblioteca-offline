@@ -1,0 +1,49 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Tradutor</title>
+<script type="module">
+// Fica numa página sem tela, dentro do app. Nada vem da internet: modelo e motor estão nos arquivos do app.
+import {LatencyOptimisedTranslator} from './translator.js';
+
+const opcoes = {
+  registryUrl: new URL('registry.json', location.href).href,
+  workerUrl: new URL('worker/translator-worker.js', location.href).href,
+  downloadTimeout: 120000,
+  cacheSize: 2000,
+  pivotLanguage: null,
+};
+const motor = new LatencyOptimisedTranslator(opcoes);
+let atual = 0;
+
+async function umTrecho(texto) {
+  const r = await motor.translate({from: 'en', to: 'pt', text: texto, html: false});
+  return r.target.text;
+}
+
+// O primeiro uso carrega o modelo. Assim a tela já avisa quando está pronto.
+umTrecho('Water.').then(() => Ponte.pronto()).catch(e => Ponte.erro(0, String(e)));
+
+/** Por parágrafo: o texto aparece aos poucos, e a pessoa não fica olhando uma tela parada. */
+window.traduzir = async function (id, texto) {
+  atual = id;
+  const partes = texto.split('\n');
+  const uteis = partes.filter(p => p.trim()).length;
+  const saida = [];
+  let feitos = 0;
+  try {
+    for (const p of partes) {
+      if (atual !== id) return;
+      if (p.trim()) {
+        saida.push(await umTrecho(p));
+        feitos++;
+        if (atual === id) Ponte.parcial(id, feitos, uteis, saida.join('\n'));
+      } else {
+        saida.push('');
+      }
+    }
+    if (atual === id) Ponte.fim(id, saida.join('\n'));
+  } catch (e) {
+    if (atual === id) Ponte.erro(id, String(e));
+  }
+};
+</script>

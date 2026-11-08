@@ -1,0 +1,13 @@
+Tradução embutida: inglês para português, sem internet.
+
+Motor: bergamot-translator 0.4.9 (Bergamot Project / Mozilla), licença MPL-2.0.
+Código: https://github.com/browsermt/bergamot-translator
+Pacote usado, sem alteração: https://www.npmjs.com/package/@browsermt/bergamot-translator
+
+Modelo en-pt, versão 2.1: Firefox Translations (Mozilla), licença MPL-2.0.
+Código e modelos: https://github.com/mozilla/firefox-translations-models
+
+A MPL-2.0 é compatível com a GPL-3.0 do app. Foi por isso que o app não usa o ML Kit do Google,
+que é proprietário e não pode ser combinado com código GPL (seção 9 da especificação).
+
+index.html é deste app. translator.js e a pasta worker vêm do pacote, sem alteração.

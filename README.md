@@ -18,12 +18,16 @@ que me sigam no Instagram.
 
 ## Escolha a sua versão
 
-| Versão | Onde fica | Tamanho | O que tem | Guia passo a passo |
-|---|---|---|---|---|
-| 💻 **Computador** | HD/SSD de 1 TB no Windows | 830 GB | Tudo, mais a IA | **[Abrir o guia](guias/5_COMPUTADOR_WINDOWS.md)** |
-| 📱 **Celular: Slim mínimo** | Dentro do celular | 13 GB | Saúde, água, sobrevivência e o essencial da Embrapa | **[Abrir o guia](guias/2_CELULAR_SLIM_MINIMO.md)** |
-| 📱 **Celular: Slim** | Dentro do celular | 78 GB | O mínimo, mais a Wikipédia completa, consertos e muito mais | **[Abrir o guia](guias/3_CELULAR_SLIM.md)** |
-| 📱💾 **Celular: Completo** | SSD ligado no celular | 830 GB | Tudo, igual ao computador | **[Abrir o guia](guias/4_CELULAR_COMPLETO_SSD.md)** |
+Toque no nome da versão para abrir o passo a passo.
+
+- 📱 **[Celular: Slim mínimo](guias/2_CELULAR_SLIM_MINIMO.md)**: 13 GB, dentro do celular.
+  Saúde, água, sobrevivência e o essencial da Embrapa.
+- 📱 **[Celular: Slim](guias/3_CELULAR_SLIM.md)**: 78 GB, dentro do celular.
+  O mínimo, mais a Wikipédia completa, consertos e muito mais.
+- 📱💾 **[Celular: Completo](guias/4_CELULAR_COMPLETO_SSD.md)**: 830 GB, num SSD ligado no celular.
+  Tudo, igual ao computador.
+- 💻 **[Computador (Windows)](guias/5_COMPUTADOR_WINDOWS.md)**: 830 GB, num HD/SSD de 1 TB.
+  Tudo, mais a IA.
 
 **Não sabe qual escolher?**
 - **Só tem celular:** comece pelo **Slim mínimo**. Ele cabe em quase todo celular e depois dá para aumentar.
@@ -41,11 +45,9 @@ Precisa de Android 8 ou mais novo. iPhone não funciona.
 
 ### Downloads
 
-| Arquivo | Para quê |
-|---|---|
-| [**Biblioteca_de_Bolso_1.0.0.apk**](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Biblioteca_de_Bolso_1.0.0.apk) (47 MB) | O app do celular |
-| [**Preparar_Celular.zip**](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Preparar_Celular.zip) (0,2 MB) | Baixar o Slim no computador e passar para o celular |
-| [**Kit_Biblioteca_Offline_2026-11-07.zip**](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-07/Kit_Biblioteca_Offline_2026-11-07.zip) (28 MB) | Instalar a biblioteca completa no computador |
+- **O app do celular:** [Biblioteca_de_Bolso_1.0.0.apk](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Biblioteca_de_Bolso_1.0.0.apk) (47 MB).
+- **Baixar o Slim no computador e passar para o celular:** [Preparar_Celular.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Preparar_Celular.zip) (0,2 MB).
+- **Instalar a biblioteca completa no computador:** [Kit_Biblioteca_Offline_2026-11-07.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-07/Kit_Biblioteca_Offline_2026-11-07.zip) (28 MB).
 
 Os arquivos são pequenos porque não levam o conteúdo: o app e os programas baixam cada livro e
 enciclopédia direto das fontes originais (Kiwix, Embrapa, SciELO, Hesperian, Biblioteca Digital do

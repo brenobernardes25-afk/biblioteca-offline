@@ -9,8 +9,8 @@ O que muda em relação à entrada:
 - Fontes bloqueadas (web.archive.org, trueprepper.com, WikEM) passam a vir do Release do GitHub.
 - PDFs cortados no D: (ver corrigidos.json) usam a versão inteira, com o tamanho certo.
 - Obras de terceiros sem permissão de redistribuir não vão para o Release: o celular baixa do site
-  oficial quando ele tem o arquivo; se não tem, o item fica no endereço original e vai para "Faltou".
-- O que não tem versão inteira em lugar nenhum sai da lista.
+  oficial quando ele tem o arquivo; se não tem, o item sai da lista.
+- O que não tem versão inteira em lugar nenhum, ou que a fonte entrega quebrado, sai da lista.
 
 --copiar PASTA    copia para PASTA os arquivos a publicar, já com o nome do Release.
 --inteiros PASTA  pasta com as versões inteiras baixadas (necessária com --copiar).
@@ -27,10 +27,11 @@ import unicodedata
 TAG = "fontes-celular-2026-11"
 BASE = f"https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/{TAG}/"
 RAIZ_PC = "D:/"
-SUFIXO_VERSAO = "d"  # Mais nova que a anterior, para o app aceitar.
+SUFIXO_VERSAO = "e"  # Mais nova que a anterior, para o app aceitar.
 PASTA = os.path.dirname(os.path.abspath(__file__))
 
-# Não publicar num repositório público sem decisão do Breno. Sem endereço alternativo: vão para "Faltou".
+# Não publicar num repositório público sem decisão do Breno. Sem endereço que funcione: saem da lista
+# (antes ficavam em "Faltou" e apareciam como erro para quem baixava).
 NAO_ESPELHAR = {
     "03_FM_3-05.70_Survival_2002.pdf":
         "Aviso no PDF: distribuição só para o governo dos EUA e contratados; aviso de destruição",
@@ -67,6 +68,12 @@ DIRETO_DO_SITE = {
     "livro_aval_malaria.pdf": "Publicação da OPAS com autores individuais, sem permissão",
     "subsidios_conhecimento_hepato_explenica_toxemica_esquistossomose_mansonica.pdf":
         "Escaneado, autoria e direitos não conferidos",
+}
+
+# PDFs da Embrapa que o próprio site entrega quebrados ou que saíram do ar (relatos de quem baixou).
+REMOVER_IDS = {
+    "embrapa:974421:0": "O arquivo está cortado no site da Embrapa",
+    "embrapa:131401:0": "Saiu do site da Embrapa (erro 404)",
 }
 
 # Cortado no D: e sem versão inteira no site nem no arquivo: um PDF quebrado não ajuda ninguém.
@@ -126,7 +133,9 @@ def main():
             delta[i["pacote"]] -= i["tam"]
             linhas.append([i["id"], i["titulo"], i["tam"], "removido da lista", REMOVER[arq], i["url"]])
         elif arq in NAO_ESPELHAR:
-            linhas.append([i["id"], i["titulo"], i["tam"], "fora do Release", NAO_ESPELHAR[arq], i["url"]])
+            tirar.add(i["id"])
+            delta[i["pacote"]] -= i["tam"]
+            linhas.append([i["id"], i["titulo"], i["tam"], "removido da lista", NAO_ESPELHAR[arq], i["url"]])
         elif arq in DIRETO_DO_SITE:
             linhas.append([i["id"], i["titulo"], i["tam"], "direto do site oficial", DIRETO_DO_SITE[arq], i["url"]])
             i["url_original"] = i["url"]
@@ -152,6 +161,11 @@ def main():
                 destino = os.path.join(copiar, nome)
                 if not os.path.exists(destino) or os.path.getsize(destino) != i["tam"]:
                     shutil.copyfile(p, destino)
+    for i in d["itens"]:
+        if i["id"] in REMOVER_IDS and i["id"] not in tirar:
+            tirar.add(i["id"])
+            delta[i["pacote"]] -= i["tam"]
+            linhas.append([i["id"], i["titulo"], i["tam"], "removido da lista", REMOVER_IDS[i["id"]], i["url"]])
     d["itens"] = [i for i in d["itens"] if i["id"] not in tirar]
     # O Slim inclui o mínimo, então soma as duas diferenças.
     d["pacotes"]["minimo"]["tam"] += delta["minimo"]
@@ -161,7 +175,7 @@ def main():
     arq_indice = os.path.join(PASTA, "indice_info.json")
     if os.path.exists(arq_indice):
         ind = json.load(open(arq_indice, encoding="utf-8"))
-        if ind["versao"] != d["versao"]:
+        if ind["versao"].rstrip("abcdefghijklmnopqrstuvwxyz") != d["versao"].rstrip("abcdefghijklmnopqrstuvwxyz"):
             raise SystemExit(f"O índice é da versão {ind['versao']}, e a lista é {d['versao']}. Gere o índice de novo.")
         d["itens"].append({
             "id": "indice:slim", "tipo": "indice", "pacote": "minimo", "tema": "Índice", "titulo": "Índice de busca dos manuais",

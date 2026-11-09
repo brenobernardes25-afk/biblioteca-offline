@@ -34,14 +34,15 @@ class LogicaTest {
     @Test
     fun manifestoRealTemOsNumerosDaEspecificacao() {
         val m = Manifesto.ler(File("src/main/assets/pacotes.json").readText(Charsets.UTF_8))
-        // Dois a menos que a especificação: caderneta_crianca_menina_2019 só existe cortada, e a IA de 1,7B saiu.
-        assertEquals(3601, m.itens.size)
+        // Nove a menos que a especificação: caderneta_crianca_menina_2019 só existe cortada, a IA de 1,7B saiu,
+        // 5 manuais militares sem permissão de redistribuir e 2 PDFs quebrados no site da Embrapa.
+        assertEquals(3594, m.itens.size)
         assertEquals(listOf("ia:qwen3-4b"), m.itens.filter { it.tipo == "ia" }.map { it.id })
         assertEquals(41, m.itens.count { it.tipo == "zim" })
         val minimo = m.itens.filter { it.pacote == "minimo" }
-        assertEquals(1178, minimo.size)
+        assertEquals(1173, minimo.size)
         assertEquals(m.tamMinimo, minimo.sumOf { it.tam })
-        assertEquals(3600, m.itens.count { it.pacote != "opcional" })
+        assertEquals(3593, m.itens.count { it.pacote != "opcional" })
         assertEquals(m.tamSlim, m.itens.filter { it.pacote != "opcional" }.sumOf { it.tam })
         assertEquals(m.itens.size, m.itens.map { it.id }.toSet().size)
         assertEquals(m.itens.size, m.itens.map { it.destino }.toSet().size)

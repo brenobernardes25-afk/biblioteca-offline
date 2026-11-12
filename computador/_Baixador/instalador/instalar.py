@@ -21,6 +21,7 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
+import zlib
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 BAIXADOR = os.path.dirname(AQUI)
@@ -226,16 +227,28 @@ def instalar_programas():
             if os.path.isdir(os.path.join(RAIZ, '6_Instaladores')) else []
         if not zips or os.path.exists(marca):
             continue
-        z = zipfile.ZipFile(os.path.join(RAIZ, '6_Instaladores', zips[-1]))
-        nomes = [n for n in z.namelist() if not n.endswith('/')]
-        topo = {n.split('/')[0] for n in nomes}
-        corta = (len(topo) == 1 and all('/' in n for n in nomes))   # zip com uma pasta só: tira a pasta
-        os.makedirs(destino, exist_ok=True)
-        for n in nomes:
-            alvo = os.path.join(destino, *(n.split('/')[1:] if corta else n.split('/')))
-            os.makedirs(os.path.dirname(alvo), exist_ok=True)
-            with z.open(n) as a, open(alvo, 'wb') as b:
-                shutil.copyfileobj(a, b)
+        arq = os.path.join(RAIZ, '6_Instaladores', zips[-1])
+        try:
+            with zipfile.ZipFile(arq) as z:
+                nomes = [n for n in z.namelist() if not n.endswith('/')]
+                topo = {n.split('/')[0] for n in nomes}
+                corta = (len(topo) == 1 and all('/' in n for n in nomes))   # zip com uma pasta só: tira a pasta
+                os.makedirs(destino, exist_ok=True)
+                for n in nomes:
+                    alvo = os.path.join(destino, *(n.split('/')[1:] if corta else n.split('/')))
+                    os.makedirs(os.path.dirname(alvo), exist_ok=True)
+                    with z.open(n) as a, open(alvo, 'wb') as b:
+                        shutil.copyfileobj(a, b)
+        except (zipfile.BadZipFile, zlib.error, EOFError) as e:
+            # Veio estragado (download emendado errado). Apaga para baixar de novo na próxima vez, sem parar o resto.
+            for f in (arq, arq + '.ok'):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+            escreve('O instalador do %s veio estragado (%s). Apaguei: rode o INSTALAR_BIBLIOTECA.bat de novo '
+                    'que ele baixa outra vez.' % (pasta, e))
+            continue
         for dll in ('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll'):   # runtime do Visual C++ levado no kit
             o = os.path.join(RAIZ, 'App', 'runtime', dll)
             if os.path.exists(o) and not os.path.exists(os.path.join(destino, dll)) and pasta != 'Kiwix':

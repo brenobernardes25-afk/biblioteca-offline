@@ -34,7 +34,9 @@ FOLGA_GB = 5
 PARALELO = 6
 SEM_JANELA = 0x08000000 if os.name == 'nt' else 0
 GRUPOS = {1: 'Programas e IA', 2: 'Saúde, sobrevivência e religião', 3: 'Enciclopédias essenciais, mapas e instaladores',
-          4: 'Agricultura, Exército, livros acadêmicos', 5: 'Demais enciclopédias', 6: 'Gutenberg, IAs extras e o resto'}
+          4: 'Agricultura, Exército, livros acadêmicos', 5: 'Demais enciclopédias', 6: 'Gutenberg, IAs extras e o resto',
+          7: 'PDFs guardados no web.archive.org (servidor lento)'}
+PARTE_LENTA = 7   # o web.archive.org às vezes fica quase parado: o resto não espera por ele
 PROGRAMAS = [  # zip em 6_Instaladores -> pasta em Programas
     ('kiwix-tools_win', 'KiwixServe'), ('kiwix-desktop_windows', 'Kiwix'), ('llama-b', 'LlamaCpp')]
 
@@ -330,6 +332,9 @@ def main():
         for c in fora:
             print('   - %s' % categorias.NOMES[c])
     faltam = [i for i in itens if i['tipo'] != 'gerado' and categorias.quer(i['rel'], fora) and not pronto(i)]
+    for i in faltam:
+        if 'web.archive.org/' in i['url']:
+            i['prio'] = PARTE_LENTA
     # só para testar o kit: --max-mb 50 (pula arquivos maiores) --limite 30 (no máximo 30 por parte)
     if '--max-mb' in sys.argv:
         teto = float(sys.argv[sys.argv.index('--max-mb') + 1]) * 2**20

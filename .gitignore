@@ -1,0 +1,20 @@
+# Conteúdo baixado e dados gerados (não versionar)
+computador/1_Enciclopedia/
+computador/2_Mapas/
+computador/4_IA/
+computador/5_Acervo/
+computador/6_Instaladores/
+computador/Programas/
+computador/App/dados/
+computador/.temporarios/
+computador/_Transferencias/
+computador/_Baixador/instalador/instalacao_*.json
+computador/_Baixador/instalador/instalacao_registro.txt
+__pycache__/
+*.py[cod]
+.DS_Store
+._*
+*.part
+*.baixando
+*.reparando
+*.ok

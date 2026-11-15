@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import subprocess
+import sys  # [mac]
 import threading
 import time
 
@@ -60,7 +61,7 @@ def iniciar(verificar, partes=('zims', 'acervo')):
             return False, 'Não achei _Baixador\\atualizar.py.'
         if indice.progresso.get('rodando'):
             return False, 'A biblioteca está sendo indexada agora; espere terminar.'
-        args = [os.path.join(config.RAIZ, 'Programas', 'Python', 'python.exe'), '-I', '-X', 'utf8', SCRIPT]
+        args = [sys.executable, '-I', '-X', 'utf8', SCRIPT]  # [mac] python3 do sistema, não o embutido Windows
         if verificar:
             args.append('--verificar')
         else:
@@ -77,10 +78,13 @@ def cancelar():
     if p is None or p.poll() is not None:
         return False
     # o script chama curl e outros baixadores: encerra a árvore inteira (tudo é retomável)
-    try:
-        subprocess.call(['taskkill', '/T', '/F', '/PID', str(p.pid)], stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL, creationflags=0x08000000)
-    except OSError:
+    if os.name == 'nt':  # [mac] taskkill só existe no Windows
+        try:
+            subprocess.call(['taskkill', '/T', '/F', '/PID', str(p.pid)], stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL, creationflags=0x08000000)
+        except OSError:
+            sistema.encerrar(p)
+    else:
         sistema.encerrar(p)
     e = _ler_estado()
     if e:
@@ -125,6 +129,12 @@ def _script_vivo(pid):
     """O processo da atualização (de uma abertura anterior do app) ainda existe? Pergunta direto ao Windows."""
     if not pid:
         return False
+    if os.name != 'nt':  # [mac] sem windll: testa se o PID existe
+        try:
+            os.kill(int(pid), 0)
+            return True
+        except (OSError, ValueError):
+            return False
     try:
         import ctypes
         k = ctypes.windll.kernel32

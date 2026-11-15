@@ -34,11 +34,22 @@ _motor = {'evitar_llamacpp': False}
 
 
 def achar_exe():
-    """Prefere o llama-server oficial (Programas\\LlamaCpp): lê a pergunta e escreve ~2x mais rápido.
-    O llamafile fica de reserva (usado se o llama-server não abrir neste computador)."""
+    """Escolhe o motor nativo do sistema sem misturar Mac e Windows."""
     if not _motor['evitar_llamacpp']:
-        for p in sistema.achar('Programas/LlamaCpp/**/llama-server.exe'):
-            if os.path.isfile(p):
+        if os.name == 'nt':
+            padroes = ('Programas/Windows/LlamaCpp/**/llama-server.exe',
+                       'Programas/LlamaCpp/**/llama-server.exe')
+            candidatos = (shutil.which('llama-server.exe'),)
+        else:
+            padroes = ('Programas/LlamaCpp/**/llama-server',)
+            candidatos = (shutil.which('llama-server'), '/opt/homebrew/bin/llama-server',
+                          '/usr/local/bin/llama-server')
+        for padrao in padroes:
+            for p in sistema.achar(padrao):
+                if os.path.isfile(p):
+                    return p
+        for p in candidatos:
+            if p and os.path.isfile(p):
                 return p
     return achar_llamafile()
 
@@ -202,7 +213,7 @@ def aquecer():
 def disponivel():
     """Há programa e modelo para rodar a IA? (não liga nada)"""
     if not achar_exe():
-        return False, 'Programa da IA (llamafile) não encontrado em Programas\\IA.'
+        return False, 'Programa da IA (llama-server) não encontrado em Programas/LlamaCpp. Rode o instalador Mac ou: brew install llama.cpp'
     if not modelos():
         return False, 'Nenhum modelo de IA (.gguf) encontrado na pasta 4_IA.'
     return True, ''
@@ -256,7 +267,11 @@ def garantir_rodando(timeout=300, aviso=None):
                      threads, porta, 'cópia no computador' if origem != m['caminho'] else 'do SSD')
             env = {}
             if not config.estado['somente_leitura']:
-                env = {'HOME': config.TMP, 'LLAMA_CACHE': config.TMP, 'XDG_CACHE_HOME': config.TMP}
+                # [mac] não sobrescrever HOME no macOS (quebra Metal/cache do sistema)
+                if os.name == 'nt':
+                    env = {'HOME': config.TMP, 'LLAMA_CACHE': config.TMP, 'XDG_CACHE_HOME': config.TMP}
+                else:
+                    env = {'LLAMA_CACHE': config.TMP, 'XDG_CACHE_HOME': config.TMP}
             _estado.update(processo=sistema.iniciar_processo(args, cwd=config.RAIZ, env_extra=env,
                                                              log_arquivo=os.path.join(config.DADOS, 'ia_log.txt')),
                            porta=porta, modelo=m, situacao='carregando', erro='', inicio_carga=time.time(), exe=exe)

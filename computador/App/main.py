@@ -29,10 +29,11 @@ def escrever(msg=''):
 
 def main():
     inicio = time.time()
-    try:
-        os.system('title Biblioteca Offline - feche esta janela para sair')
-    except Exception:
-        pass
+    if os.name == 'nt':  # [mac] 'title' só existe no cmd do Windows
+        try:
+            os.system('title Biblioteca Offline - feche esta janela para sair')
+        except Exception:
+            pass
     config.testar_escrita()
     config.iniciar_log()
     config.carregar()

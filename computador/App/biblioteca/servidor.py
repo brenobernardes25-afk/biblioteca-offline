@@ -895,7 +895,7 @@ def situacao(cliente='127.0.0.1'):
     if not zims_ok:
         faltas.append('Nenhuma enciclopédia (.zim) em 1_Enciclopedia: rode o _Baixador.')
     if not kiwix.achar_exe():
-        faltas.append('Falta o kiwix-serve em Programas\\KiwixServe: rode o _Baixador.')
+        faltas.append('Falta o kiwix-serve em Programas/KiwixServe: rode o instalador Mac ou brew install kiwix-tools.')
     if not st_ia['disponivel']:
         faltas.append(st_ia['motivo'] + ' Sem isso, a busca funciona, mas a "Pergunte" e a tradução não.')
     res = indice.resumo()

@@ -38,7 +38,9 @@ usar_certificados()
 def achar_curl():
     if _curl['achado']:
         return _curl['caminho']
-    candidatos = [os.path.join(RAIZ, 'Programas', 'curl', 'curl.exe'),
+    # [mac] /usr/bin/curl já vem no macOS; procura ele antes dos caminhos Windows
+    candidatos = [shutil.which('curl'), '/usr/bin/curl',
+                  os.path.join(RAIZ, 'Programas', 'curl', 'curl.exe'),
                   os.path.join(RAIZ, 'Programas', 'curl', 'bin', 'curl.exe'),
                   os.path.join(RAIZ, 'Programas', 'Python', 'curl.exe'),
                   os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32', 'curl.exe'),

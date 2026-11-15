@@ -6,6 +6,7 @@ import shutil
 import socket
 import struct
 import subprocess
+import sys  # [mac]
 import time
 
 from . import config
@@ -26,6 +27,18 @@ class _MEMSTATUS(ctypes.Structure):
 
 def memoria():
     """(total, disponível) em bytes."""
+    if sys.platform == 'darwin':  # [mac] sysctl + vm_stat, sem windll
+        try:
+            total = int(subprocess.check_output(['sysctl', '-n', 'hw.memsize'], text=True).strip())
+            out = subprocess.check_output(['vm_stat'], text=True)
+            pag = int(subprocess.check_output(['sysctl', '-n', 'hw.pagesize'], text=True).strip())
+            livre_pag = 0
+            for linha in out.splitlines():
+                if 'Pages free' in linha or 'Pages inactive' in linha:
+                    livre_pag += int(linha.split(':')[1].strip().rstrip('.'))
+            return (total, livre_pag * pag)
+        except Exception:
+            return (0, 0)
     if not WIN:
         return (0, 0)
     m = _MEMSTATUS()
@@ -251,6 +264,8 @@ def preparar_runtime(exe):
     """O kiwix-serve e o llama-server precisam do runtime do Visual C++ 2022 (msvcp140 >= 14.40). Muitos PCs têm
     um antigo, e aí ele trava ao abrir. Levamos as DLLs em App\\runtime e copiamos para a pasta
     do kiwix-serve (o Windows procura primeiro na pasta do programa)."""
+    if not WIN:  # [mac] DLLs do Visual C++ não existem no Mac
+        return
     pasta = os.path.dirname(exe)
     for nome in ('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll'):
         origem = os.path.join(config.RUNTIME, nome)

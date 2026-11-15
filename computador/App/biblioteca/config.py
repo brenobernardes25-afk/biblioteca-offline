@@ -4,6 +4,7 @@ import logging
 import logging.handlers
 import os
 import shutil
+import sys  # [mac]
 import threading
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,7 +19,11 @@ ENCICLOPEDIA = os.path.join(RAIZ, '1_Enciclopedia')
 IA_MODELOS = os.path.join(RAIZ, '4_IA')
 MAPAS = os.path.join(RAIZ, '2_Mapas')
 # cópia da IA no disco interno do computador (lê muito mais rápido que o SSD externo)
-CACHE_PC = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'BibliotecaOffline', 'ia')
+# [mac] no macOS o cache da IA vai para ~/Library/Caches/BibliotecaOffline/ia
+if sys.platform == 'darwin':
+    CACHE_PC = os.path.join(RAIZ, '.cache', 'ia')
+else:
+    CACHE_PC = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'BibliotecaOffline', 'ia')
 INSTALADORES = os.path.join(RAIZ, '6_Instaladores')
 PROGRAMAS = os.path.join(RAIZ, 'Programas')
 

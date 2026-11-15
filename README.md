@@ -1,3 +1,7 @@
+> **Fork de Diego Hora:** adaptações para macOS e uso compartilhado com Windows.
+> Veja [as melhorias e os testes](docs/ADAPTACOES.md) e o [guia do Mac](computador/README-MAC.md).
+> O projeto e os créditos originais de Breno Paiva seguem abaixo.
+
 # Biblioteca Offline de Sobrevivência
 
 Uma biblioteca do conhecimento humano que funciona **sem internet**, em português:

@@ -30,7 +30,7 @@ MANIFESTO = os.path.join(AQUI, 'manifesto.tsv.gz')
 REGISTRO = os.path.join(AQUI, 'instalacao_registro.txt')
 TROCAS = os.path.join(AQUI, 'instalacao_trocas.json')
 PYTHON = sys.executable
-UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BibliotecaOffline/1.0'
+UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) BibliotecaOffline/1.0 (Mac)'  # [mac]
 FOLGA_GB = 5
 PARALELO = 6
 SEM_JANELA = 0x08000000 if os.name == 'nt' else 0
@@ -38,7 +38,15 @@ GRUPOS = {1: 'Programas e IA', 2: 'Saúde, sobrevivência e religião', 3: 'Enci
           4: 'Agricultura, Exército, livros acadêmicos', 5: 'Demais enciclopédias', 6: 'Gutenberg, IAs extras e o resto',
           7: 'PDFs guardados no web.archive.org (servidor lento)'}
 PARTE_LENTA = 7   # o web.archive.org às vezes fica quase parado: o resto não espera por ele
-PROGRAMAS = [  # zip em 6_Instaladores -> pasta em Programas
+# [mac] no Mac os programas são .tar.gz (kiwix-tools, llama.cpp) — sem .exe, sem
+# Python embutido Windows, sem vc_redist, sem Firefox/GPXSee Windows.
+# O instalador pula os instaladores Windows do manifesto e baixa os de Mac.
+import platform as _platform  # noqa: E402
+_ARQ_MAC = 'arm64' if _platform.machine() in ('arm64', 'aarch64') else 'x86_64'
+PROGRAMAS_MAC = [  # (prefixo do arquivo em 6_Instaladores, pasta em Programas, extensão)
+    ('kiwix-tools_macos-%s' % _ARQ_MAC, 'KiwixServe', '.tar.gz'),
+    ('llama-b', 'LlamaCpp', '.tar.gz')]
+PROGRAMAS = [  # zip em 6_Instaladores -> pasta em Programas (Windows, mantido)
     ('kiwix-tools_win', 'KiwixServe'), ('kiwix-desktop_windows', 'Kiwix'), ('llama-b', 'LlamaCpp')]
 
 sys.path.insert(0, BAIXADOR)
@@ -93,12 +101,28 @@ def pdf_cortado(p, tam):
         return b'%%EOF' not in f.read()
 
 
+def zim_concluido(p):
+    """Um ZIM só está completo quando o tamanho coincide com o cabeçalho."""
+    import struct
+    try:
+        with open(p, 'rb') as f:
+            cab = f.read(80)
+        return len(cab) == 80 and cab[:4] == b'ZIM\x04' and os.path.getsize(p) == struct.unpack_from('<Q', cab, 72)[0] + 16
+    except (OSError, struct.error):
+        return False
+
+
 def pronto(item):
-    p = caminho(item['rel'])
-    if os.path.exists(p + '.ok') and os.path.isfile(p) and os.path.getsize(p) > 0:
-        return not pdf_cortado(p, item['tam'])
+    def valido(p, tam):
+        if not os.path.isfile(p) or not os.path.exists(p + '.ok') or os.path.getsize(p) == 0:
+            return False
+        if p.lower().endswith('.zim'):
+            return zim_concluido(p)
+        return not pdf_cortado(p, tam)
+    if valido(caminho(item['rel']), item['tam']):
+        return True
     novo = estado['trocados'].get(item['rel'])
-    return bool(novo and os.path.exists(caminho(novo) + '.ok'))
+    return bool(novo and valido(caminho(novo), 0))
 
 
 MAGICOS = {'.pdf': b'%PDF', '.epub': b'PK', '.zip': b'PK', '.apk': b'PK', '.zim': b'ZIM\x04', '.gguf': b'GGUF'}
@@ -121,13 +145,18 @@ def baixar_url(url, destino, tam):
     parcial = destino + '.part'
     os.makedirs(os.path.dirname(destino), exist_ok=True)
     if tam > 50 * 2**20 or tam == 0 and url.endswith(('.zim', '.gguf', '.map', '.exe')):
+        concluido = False
         for t in range(1, 6):
             import baixa_seguro   # usa o curl.exe se existir; senão baixa pelo Python (retomável)
-            baixa_seguro.baixar(url, parcial, UA)
+            codigo = baixa_seguro.baixar(url, parcial, UA)
             feito = os.path.getsize(parcial) if os.path.exists(parcial) else 0
-            if feito and (not tam or feito >= tam):
+            completo = zim_concluido(parcial) if destino.lower().endswith('.zim') else bool(feito and (not tam or feito >= tam))
+            if codigo == 0 and completo:
+                concluido = True
                 break
             time.sleep(10 * t)
+        if not concluido:
+            raise RuntimeError('download incompleto; parcial preservado para retomada')
     else:
         for t in range(1, 5):
             try:
@@ -143,6 +172,8 @@ def baixar_url(url, destino, tam):
                 time.sleep(8 * t)
     if not os.path.exists(parcial) or os.path.getsize(parcial) == 0:
         raise RuntimeError('não baixou')
+    if destino.lower().endswith('.zim') and not zim_concluido(parcial):
+        raise RuntimeError('ZIM incompleto; não será marcado como concluído')
     os.replace(parcial, destino)
 
 
@@ -219,6 +250,35 @@ def mostrar_andamento(parar):
 
 
 def instalar_programas():
+    # [mac] no macOS instala os .tar.gz de Mac; no Windows mantém o caminho original
+    if os.name != 'nt':
+        import tarfile
+        for prefixo, pasta, ext in PROGRAMAS_MAC:
+            destino = os.path.join(RAIZ, 'Programas', pasta)
+            marca = os.path.join(destino, '.instalado')
+            pasta_inst = os.path.join(RAIZ, '6_Instaladores')
+            arqs = sorted(f for f in os.listdir(pasta_inst) if f.startswith(prefixo) and f.endswith(ext)
+                          and os.path.exists(os.path.join(pasta_inst, f + '.ok'))) \
+                if os.path.isdir(pasta_inst) else []
+            if not arqs or os.path.exists(marca):
+                continue
+            arq = os.path.join(pasta_inst, arqs[-1])
+            os.makedirs(destino, exist_ok=True)
+            with tarfile.open(arq, 'r:gz') as t:
+                membros = [m for m in t.getmembers() if m.isfile() or m.issym() or m.islnk()]
+                topo = {m.name.split('/')[0] for m in membros}
+                corta = len(topo) == 1
+                for m in membros:
+                    partes = m.name.split('/')[1:] if corta else m.name.split('/')
+                    alvo = os.path.join(destino, *partes)
+                    os.makedirs(os.path.dirname(alvo), exist_ok=True)
+                    with t.extractfile(m) as a, open(alvo, 'wb') as b:
+                        shutil.copyfileobj(a, b)
+                    os.chmod(alvo, 0o755)  # [mac] binários precisam de permissão de execução
+            with open(marca, 'w') as f:
+                f.write(arqs[-1])
+            escreve('Programa instalado: %s (de %s)' % (pasta, arqs[-1]))
+        return
     for prefixo, pasta in PROGRAMAS:
         destino = os.path.join(RAIZ, 'Programas', pasta)
         marca = os.path.join(destino, '.instalado')
@@ -253,7 +313,8 @@ def instalar_programas():
             o = os.path.join(RAIZ, 'App', 'runtime', dll)
             if os.path.exists(o) and not os.path.exists(os.path.join(destino, dll)) and pasta != 'Kiwix':
                 shutil.copy2(o, destino)
-        open(marca, 'w').write(zips[-1])
+        with open(marca, 'w') as f:
+            f.write(zips[-1])
         escreve('Programa instalado: %s (de %s)' % (pasta, zips[-1]))
 
 
@@ -348,6 +409,10 @@ def main():
     for i in faltam:
         if 'web.archive.org/' in i['url']:
             i['prio'] = PARTE_LENTA
+    # [mac] pula instaladores só-Windows do manifesto (o Mac baixa os equivalentes em INSTALAR_MAC.sh)
+    if os.name != 'nt':
+        _win = ('_win', 'windows', 'python-3.12.7-embed', 'llamafile.exe')
+        faltam = [i for i in faltam if not (i['rel'].startswith('6_Instaladores/') and (any(w in i['rel'].lower() for w in _win) or i['rel'].lower().endswith('.exe'))) and i['rel'] != 'Programas/IA/llamafile.exe']
     # só para testar o kit: --max-mb 50 (pula arquivos maiores) --limite 30 (no máximo 30 por parte)
     if '--max-mb' in sys.argv:
         teto = float(sys.argv[sys.argv.index('--max-mb') + 1]) * 2**20

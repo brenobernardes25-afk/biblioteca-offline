@@ -4,6 +4,7 @@ import http.client
 import json
 import os
 import re
+import shutil  # [mac]
 import threading
 import time
 from html import escape, unescape
@@ -120,10 +121,22 @@ def disponivel():
 # ------------------------------------------------------------------ iniciar
 
 def achar_exe():
-    for padrao in ('Programas/KiwixServe/**/kiwix-serve.exe', 'Programas/**/kiwix-serve.exe'):
-        achados = sistema.achar(padrao)
-        if achados:
-            return achados[0]
+    """Procura somente os executáveis compatíveis com o sistema atual."""
+    if os.name == 'nt':
+        padroes = ('Programas/Windows/KiwixServe/**/kiwix-serve.exe',
+                   'Programas/KiwixServe/**/kiwix-serve.exe')
+        candidatos = (shutil.which('kiwix-serve.exe'),)
+    else:
+        padroes = ('Programas/KiwixServe/**/kiwix-serve',)
+        candidatos = (shutil.which('kiwix-serve'), '/opt/homebrew/bin/kiwix-serve',
+                      '/usr/local/bin/kiwix-serve')
+    for padrao in padroes:
+        for p in sistema.achar(padrao):
+            if os.path.isfile(p):
+                return p
+    for p in candidatos:
+        if p and os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
     return None
 
 
@@ -176,7 +189,8 @@ def _iniciar_bloq(porta_inicial, evitar, lista=None):
     if ruins:
         log.info('ZIMs incompletos ou inválidos (ignorados): %s', ruins)
     if not exe:
-        _estado['erro'] = 'Programa kiwix-serve não encontrado em Programas\\KiwixServe. Rode o _Baixador.'
+        _estado['erro'] = ('Programa kiwix-serve não encontrado em Programas/KiwixServe. '
+                        'Rode o instalador Mac ou instale com: brew install kiwix-tools')
         return
     if not zims:
         _estado['erro'] = 'Nenhuma enciclopédia (.zim) completa em 1_Enciclopedia.'
@@ -234,7 +248,9 @@ def _library_xml(exe, zims):
     Retorna o caminho, ou None se não der (SSD somente leitura, kiwix-manage ausente...)."""
     if config.estado['somente_leitura']:
         return None
-    manage = os.path.join(os.path.dirname(exe), 'kiwix-manage.exe')
+    manage = os.path.join(os.path.dirname(exe), 'kiwix-manage')  # [mac] sem .exe
+    if not os.path.exists(manage):
+        manage = os.path.join(os.path.dirname(exe), 'kiwix-manage.exe')
     if not os.path.exists(manage):
         return None
     lib = os.path.join(config.DADOS, 'library.xml')

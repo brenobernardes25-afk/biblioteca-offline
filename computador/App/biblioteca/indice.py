@@ -166,7 +166,7 @@ def varrer():
                     pilha.append(e.path)
                 continue
             ext = os.path.splitext(e.name)[1].lower()
-            if ext not in EXTENSOES or e.name.startswith('_indice'):
+            if ext not in EXTENSOES or e.name.startswith(('.', '_indice')):
                 continue
             try:
                 st = e.stat()

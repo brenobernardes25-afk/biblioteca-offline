@@ -47,7 +47,7 @@ Precisa de Android 8 ou mais novo. iPhone não funciona.
 
 - **O app do celular:** [Biblioteca_de_Bolso_1.0.0.apk](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Biblioteca_de_Bolso_1.0.0.apk) (47 MB).
 - **Baixar o Slim no computador e passar para o celular:** [Preparar_Celular.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Preparar_Celular.zip) (0,2 MB).
-- **Instalar a biblioteca completa no computador:** [Kit_Biblioteca_Offline_2026-11-08.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-08/Kit_Biblioteca_Offline_2026-11-08.zip) (28 MB).
+- **Instalar a biblioteca completa no computador:** [Kit_Biblioteca_Offline_2026-11-15.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-15/Kit_Biblioteca_Offline_2026-11-15.zip) (28 MB).
 
 Os arquivos são pequenos porque não levam o conteúdo: o app e os programas baixam cada livro e
 enciclopédia direto das fontes originais (Kiwix, Embrapa, SciELO, Hesperian, Biblioteca Digital do
@@ -63,7 +63,8 @@ família passar 72 horas sem ajuda em enchente, El Niño, apagão, crise e prime
 
 ## Já instalou no computador?
 
-- **PDFs cortados** (kits até 05/11/2026) e **"[WinError 2]" ou "Sem internet"** (kit de 30/10):
+- **Download parado, muito lento ou com "FALHOU"** (kits até 08/11/2026), **PDFs cortados** (até 05/11) e
+  **"[WinError 2]" ou "Sem internet"** (kit de 30/10):
   veja [Já instalou antes?](guias/5_COMPUTADOR_WINDOWS.md#já-instalou-antes) no guia do computador.
   Não precisa começar de novo.
 

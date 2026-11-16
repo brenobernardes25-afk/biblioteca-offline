@@ -29,6 +29,10 @@ CATEGORIAS = [
     ('ia_extra', 'IAs extras (maiores e mais lentas)'),
 ]
 NOMES = dict(CATEGORIAS)
+# Versão leve (~100 GB, para HD ou computador com pouco espaço): o essencial, tudo em português que é prático,
+# os manuais em inglês, os mapas, o Exército e os textos religiosos. Fica de fora o que é grande e em inglês,
+# a Embrapa inteira (161 GB) e os livros acadêmicos. Usada pelo INSTALAR_VERSAO_LEVE.bat.
+LEVE_FORA = ['survivor', 'agricultura', 'academicos', 'wikipedia_en', 'forums', 'literatura', 'ia_extra']
 OPCIONAIS = [c for c, _ in CATEGORIAS if c != 'essencial']
 
 PRATICOS_EN = ('mdwiki', 'ifixit_en', 'appropedia', 'medlineplus', 'wikem', 'zimgit', 'ready.gov', 'cd3wd', 'energypedia',

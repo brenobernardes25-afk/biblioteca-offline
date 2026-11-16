@@ -28,6 +28,9 @@ Toque no nome da versão para abrir o passo a passo.
   Tudo, igual ao computador.
 - 💻 **[Computador (Windows)](guias/5_COMPUTADOR_WINDOWS.md)**: 830 GB, num HD/SSD de 1 TB.
   Tudo, mais a IA.
+- 💻 **[Computador, versão leve](guias/5_COMPUTADOR_WINDOWS.md)**: ~100 GB, cabe no próprio computador.
+  O mesmo kit: é só usar o `INSTALAR_VERSAO_LEVE.bat`. Wikipédia em português, saúde, sobrevivência,
+  mapas, Exército e a IA.
 
 **Não sabe qual escolher?**
 - **Só tem celular:** comece pelo **Slim mínimo**. Ele cabe em quase todo celular e depois dá para aumentar.
@@ -47,7 +50,7 @@ Precisa de Android 8 ou mais novo. iPhone não funciona.
 
 - **O app do celular:** [Biblioteca_de_Bolso_1.2.8.apk](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.2.8/Biblioteca_de_Bolso_1.2.8.apk) (47 MB).
 - **Baixar o Slim no computador e passar para o celular:** [Preparar_Celular.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Preparar_Celular.zip) (0,2 MB).
-- **Instalar a biblioteca completa no computador:** [Kit_Biblioteca_Offline_2026-11-15.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-15/Kit_Biblioteca_Offline_2026-11-15.zip) (28 MB).
+- **Instalar a biblioteca completa no computador:** [Kit_Biblioteca_Offline_2026-11-16.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-16/Kit_Biblioteca_Offline_2026-11-16.zip) (28 MB).
 
 Os arquivos são pequenos porque não levam o conteúdo: o app e os programas baixam cada livro e
 enciclopédia direto das fontes originais (Kiwix, Embrapa, SciELO, Hesperian, Biblioteca Digital do

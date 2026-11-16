@@ -214,8 +214,9 @@ telas.busca = function (p) {
     if (tema) { $('#r-zim').innerHTML = '<p class="vazio">O filtro de tema vale só para os manuais.</p>'; }
     api('/api/busca/zim?' + base).then(function (r) {
       $('#n-zim').textContent = r.resultados.length + ' artigos · ' + r.ms + ' ms';
-      $('#r-zim').innerHTML = r.resultados.length ? r.resultados.map(htmlZim).join('') :
-        '<p class="vazio">' + esc(r.erro || 'Nada encontrado nas enciclopédias.') + '</p>';
+      $('#r-zim').innerHTML = (r.aviso ? '<p class="meta">' + esc(r.aviso) + '</p>' : '') +
+        (r.resultados.length ? r.resultados.map(htmlZim).join('') :
+        '<p class="vazio">' + esc(r.erro || 'Nada encontrado nas enciclopédias.') + '</p>');
       ligarTraduzir($('#r-zim'));
     }).catch(function (e) { $('#r-zim').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
   }

@@ -69,7 +69,10 @@ Java_br_com_waltz_bibliotecadebolso_ia_MotorIa_nativoCarregarCaminho(JNIEnv *env
     const char *c = env->GetStringUTFChars(caminho, nullptr);
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0;
-    mp.load_mode = LLAMA_LOAD_MODE_MMAP;
+    // A IA inteira na memória de verdade, e não "emprestada" do arquivo (mmap): em celular que economiza memória
+    // com força (Xiaomi), as páginas do arquivo eram devolvidas e cada palavra relia gigabytes do armazenamento
+    // (POCO X7 Pro: 4 s por pedaço de palavra). Lida uma vez para a memória, fica nela.
+    mp.load_mode = LLAMA_LOAD_MODE_NONE;
     llama_model *m = llama_model_load_from_file(c, mp);
     env->ReleaseStringUTFChars(caminho, c);
     return reinterpret_cast<jlong>(abrirContexto(m, nCtx, nucleos));

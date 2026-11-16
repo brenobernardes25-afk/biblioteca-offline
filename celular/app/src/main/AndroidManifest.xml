@@ -7,12 +7,23 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Montar a biblioteca num SSD pelo USB leva dias. No Android 15+, o serviço "dataSync" só roda 6 horas
+         por dia em segundo plano; o de aparelho conectado não tem esse limite. O Android exige, junto,
+         uma permissão de rede: CHANGE_NETWORK_STATE é normal (concedida na instalação) e o app não a usa. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <!-- Só enquanto monta a biblioteca no SSD: a tela pode desligar sem parar o download (seção 6.2). -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Mapa do Brasil do app: o GPS mostra onde a pessoa está (só quando ela toca no botão de localização). -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Instalar o Organic Maps que vem no pen drive (tela Mapa). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Para saber se o Organic Maps está instalado (seção 11). -->
     <queries>
         <package android:name="app.organicmaps" />
+        <package android:name="app.organicmaps.web" />
         <!-- Para achar o tradutor do celular (seção 9). -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
@@ -52,6 +63,8 @@
         </activity>
 
         <receiver android:name=".download.AcaoDownloadReceiver" android:exported="false" />
+        <!-- Resposta do instalador do Android (instalar o Organic Maps que vem no pen drive). -->
+        <receiver android:name=".util.ReceptorInstalacao" android:exported="false" />
 
         <!-- Compartilhar os logs (botão em Sobre). -->
         <provider
@@ -66,7 +79,7 @@
 
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
+            android:foregroundServiceType="dataSync|connectedDevice"
             tools:node="merge" />
     </application>
 </manifest>

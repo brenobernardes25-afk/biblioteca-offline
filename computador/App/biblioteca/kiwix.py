@@ -396,6 +396,9 @@ def buscar(consulta, idiomas=('pt', 'en', 'mul'), por_idioma=10, timeout=6.0, li
     """Busca em todos os ZIMs, agrupando por idioma (o kiwix-serve não mistura idiomas)."""
     if not disponivel():
         return {'resultados': [], 'erro': _estado['erro'] or 'Enciclopédias ainda abrindo...'}
+    if not _estado.get('aquecido'):
+        # 1ª busca depois de abrir: os índices das enciclopédias ainda estão sendo lidos do disco
+        timeout = max(timeout, 20.0)
     ts = textos.termos(consulta)
     padrao = ' '.join(ts) if ts else consulta
     grupos = {}
@@ -436,7 +439,7 @@ def buscar(consulta, idiomas=('pt', 'en', 'mul'), por_idioma=10, timeout=6.0, li
             try:
                 itens = f.result()
             except Exception as e:
-                erros.append(str(e))
+                erros.append('demorou' if isinstance(e, TimeoutError) or 'timed out' in str(e).lower() else str(e))
                 continue
             for it in itens:
                 b = _livro_da_url(it['url'])
@@ -472,7 +475,19 @@ def buscar(consulta, idiomas=('pt', 'en', 'mul'), por_idioma=10, timeout=6.0, li
         if chave not in vistos:
             vistos.add(chave)
             unicos.append(it)
-    return {'resultados': unicos[:limite], 'erro': '; '.join(erros[:2]) if erros and not unicos else ''}
+    demorou = any(x == 'demorou' or 'demoraram' in x for x in erros)
+    if unicos and not demorou:
+        _estado['aquecido'] = True
+    erro = aviso = ''
+    if erros and not unicos:
+        if demorou:
+            erro = ('As enciclopédias ainda estão abrindo (a primeira busca depois de abrir demora mais). '
+                    'Tente de novo em alguns segundos.')
+        else:
+            erro = '; '.join(erros[:2])
+    elif demorou:
+        aviso = 'Algumas enciclopédias ainda estão abrindo. Busque de novo em alguns segundos para ver todas.'
+    return {'resultados': unicos[:limite], 'erro': erro, 'aviso': aviso}
 
 
 # ------------------------------------------------------------------ texto de artigo (RAG)
@@ -495,13 +510,47 @@ def texto_artigo(url, timeout=6.0):
     return t
 
 
-def trechos_para_ia(consulta, n=3, idiomas=('pt',), tamanho=1400, timeout=5.0):
-    ids = [b['id'] for b in _estado['livros'] if not b['secundario']]
-    limpa = ' '.join(textos.termos(consulta, tirar_negados=True))
-    r = buscar(limpa or consulta, idiomas=idiomas, por_idioma=max(n, 5), timeout=timeout, livro_ids=ids)
+def _por_significado(consulta, n, idiomas):
+    """Artigos achados pela busca por significado (vetores.buscar_zim), nos livros que alimentam a IA."""
+    from . import vetores
+    if not vetores.disponivel_zim():
+        return []
+    try:
+        achados = vetores.buscar_zim(consulta, k=max(40, n * 10))
+    except Exception as e:
+        log.warning('busca por significado nas enciclopédias: %s', e)
+        return []
+    por_id = {b['id']: b for b in _estado['livros']}
+    saida, vistos = [], set()
+    for a in achados:
+        b = por_id.get(a['livro_id'])
+        if b is None or b['secundario'] or b['idioma'] not in idiomas:
+            continue
+        chave = (a['titulo'].lower(), b['titulo'])
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        saida.append({'titulo': a['titulo'], 'livro': b['titulo'], 'idioma': b['idioma'], 'saude': b['saude'],
+                      'url': RAIZ_URL + '/content/' + b['url'].rsplit('/', 1)[-1] + '/' + quote(a['caminho']),
+                      '_sim': round(a['sim'], 4)})
+        if len(saida) >= n:
+            break
+    return saida
+
+
+def trechos_para_ia(consulta, n=3, idiomas=('pt',), tamanho=1400, timeout=5.0, significado=True):
+    """Trechos de artigos para a IA: primeiro pela busca por significado (se houver os vetores das enciclopédias
+    e significado=True); a busca de palavras do kiwix completa se faltar."""
+    itens = _por_significado(consulta, n, idiomas) if significado else []
+    if len(itens) < n:
+        ids = [b['id'] for b in _estado['livros'] if not b['secundario']]
+        limpa = ' '.join(textos.termos(consulta, tirar_negados=True))
+        r = buscar(limpa or consulta, idiomas=idiomas, por_idioma=max(n, 5), timeout=timeout, livro_ids=ids)
+        urls = {x['url'] for x in itens}
+        itens += [x for x in r['resultados'] if (x['trecho'] or x['titulo']) and x['url'] not in urls][:n - len(itens)]
     saida = []
     futuros = []
-    for it in [x for x in r['resultados'] if x['trecho'] or x['titulo']][:n]:
+    for it in itens[:n]:
         futuros.append((it, _pool.submit(texto_artigo, it['url'], timeout)))
     for it, f in futuros:
         try:
@@ -510,7 +559,10 @@ def trechos_para_ia(consulta, n=3, idiomas=('pt',), tamanho=1400, timeout=5.0):
             continue
         if len(t) < 120:
             continue
-        saida.append({'fonte': 'zim', 'titulo': '%s — %s' % (it['titulo'], it['livro']), 'tema': it['livro'],
-                      'idioma': it['idioma'], 'pagina': None, 'url': it['url'], 'saude': it.get('saude'),
-                      'texto': textos.trecho_relevante(t, consulta, tamanho)})
+        f = {'fonte': 'zim', 'titulo': '%s — %s' % (it['titulo'], it['livro']), 'tema': it['livro'],
+             'idioma': it['idioma'], 'pagina': None, 'url': it['url'], 'saude': it.get('saude'),
+             'texto': textos.trecho_relevante(t, consulta, tamanho)}
+        if '_sim' in it:
+            f['_sim'] = it['_sim']
+        saida.append(f)
     return saida

@@ -1,0 +1,10 @@
+# Copie este arquivo para "assinatura.properties" (que NÃO vai para o GitHub) e preencha.
+# É o que faz o APK de release sair com a mesma chave do app publicado, para instalar por cima.
+# A chave em si fica fora do repositório, com cópia de segurança em pen drive e na nuvem.
+#
+# Use barras normais no caminho: C:/Users/voce/Documents/Biblioteca_de_Bolso_CHAVE/debug.keystore
+arquivo=
+senha=
+apelido=
+# Só se a senha da chave for diferente da senha do arquivo:
+# senhaDaChave=

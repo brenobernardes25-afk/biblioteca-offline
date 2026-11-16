@@ -333,6 +333,8 @@ class Manipulador(BaseHTTPRequestHandler):
             tipo += '; charset=utf-8'
         with open(p, 'rb') as f:
             dados = f.read()
+        if config.PEN_DRIVE and nome.replace('\\', '/') in ('index.html', 'app.js', 'ajuda/guia.json'):
+            dados = config.no_disco(dados.decode('utf-8')).encode('utf-8')
         pesado = nome.replace('\\', '/').startswith(('ocr/core/', 'ocr/lang/', 'ocr/pdf', 'mapa/fonts/', 'mapa/maplibre'))
         self._enviar(200, dados, tipo, {'Cache-Control': 'max-age=604800' if pesado else 'no-cache'})
 
@@ -453,7 +455,7 @@ class Manipulador(BaseHTTPRequestHandler):
         except ValueError:
             return self._erro(403, 'Caminho inválido.')
         if not os.path.isfile(p):
-            return self._erro(404, 'Arquivo não encontrado (foi removido do SSD?).')
+            return self._erro(404, config.no_disco('Arquivo não encontrado (foi removido do SSD?).'))
         tam = os.path.getsize(p)
         tipo = mimetypes.guess_type(p)[0] or 'application/octet-stream'
         if p.lower().endswith('.epub'):

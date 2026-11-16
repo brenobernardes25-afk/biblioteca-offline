@@ -261,7 +261,7 @@ class Trabalhador:
 def atualizar(bloquear=False):
     """Atualiza o índice em segundo plano. Retorna False se já estiver rodando."""
     if config.estado['somente_leitura']:
-        progresso['mensagem'] = 'SSD somente leitura: o índice não pode ser atualizado.'
+        progresso['mensagem'] = config.no_disco('SSD somente leitura: o índice não pode ser atualizado.')
         return False
     if not _lock_idx.acquire(blocking=False):
         return False
@@ -369,7 +369,7 @@ def _indexar():
         except sqlite3.Error as e:
             log.warning('não gravei %s: %s', item[1], e)
             if 'full' in str(e).lower() or 'disk' in str(e).lower():
-                config.estado['aviso_disco'] = 'O SSD encheu durante a indexação. Libere espaço e clique em Atualizar.'
+                config.estado['aviso_disco'] = config.no_disco('O SSD encheu durante a indexação. Libere espaço e clique em Atualizar.')
                 break
         progresso['feitos'] += 1
     con.execute('INSERT OR REPLACE INTO meta VALUES (?, ?)', ('ultima_atualizacao', str(time.time())))
@@ -682,8 +682,45 @@ def _consultar(con, sql, args, limite, rotulo='', tempo=4):
         return []
 
 
+def paginas_por_significado(consulta, k=60, idioma=None, tema=None):
+    """Páginas mais parecidas com a consulta pela busca por significado (vetores), da melhor para a pior:
+    [(linha, semelhança)]. Lista vazia se a busca por significado não estiver disponível."""
+    from . import vetores
+    if not vetores.disponivel():
+        return []
+    try:
+        achados = vetores.buscar(consulta, k=max(150, k * 3))
+    except Exception as e:
+        log.warning('busca por significado: %s', e)
+        return []
+    con = conexao()
+    docs, saida = {}, []
+    for rid, sim in achados:
+        # uma a uma pelo rowid: instantâneo (um IN (...) numa tabela FTS5 pode virar varredura)
+        p = con.execute('SELECT doc_id, pagina, texto FROM pag WHERE rowid = ?', (rid,)).fetchone()
+        if p is None or not p['pagina'] or p['pagina'] <= 0:
+            continue
+        d = docs.get(p['doc_id'])
+        if d is None:
+            d = docs[p['doc_id']] = con.execute('SELECT * FROM docs WHERE id = ?', (p['doc_id'],)).fetchone()
+        if d is None or (idioma and d['idioma'] != idioma) or (tema and d['tema'] != tema):
+            continue
+        saida.append(({'rowid': rid, 'doc_id': p['doc_id'], 'pagina': p['pagina'], 'texto': p['texto'],
+                       'titulo': d['titulo'], 'tema': d['tema'], 'idioma': d['idioma'], 'tipo': d['tipo'],
+                       'caminho': d['caminho'], 'paginas': d['paginas'], 'situacao': d['situacao']}, sim))
+        if len(saida) >= k:
+            break
+    return saida
+
+
+def _trecho_simples(texto, consulta, tamanho=260):
+    from html import escape
+    return escape(re.sub(r'\s+', ' ', textos.trecho_relevante(textos.limpar_controle(texto or ''), consulta, tamanho)))
+
+
 def buscar(consulta, tema=None, idioma=None, limite_docs=25, consulta_en=None):
-    """Resultados agrupados por documento, cada um com até 3 páginas."""
+    """Resultados agrupados por documento, cada um com até 3 páginas. Junta a busca por palavras com a por
+    significado (quando disponível); ver _juntar_com_significado."""
     con = conexao()
     grupos = {}
     gemeos = {}
@@ -754,7 +791,8 @@ def buscar(consulta, tema=None, idioma=None, limite_docs=25, consulta_en=None):
                 continue
             g = {'doc_id': doc_id, 'titulo': d['titulo'], 'tema': d['tema'], 'idioma': d['idioma'], 'tipo': d['tipo'],
                  'caminho': d['caminho'], 'total_paginas': d['paginas'], 'situacao': d['situacao'],
-                 'nota': -50.0 + n, 'paginas': [], 'url': url_documento(d['caminho'], d['tipo'], doc_id, 1, consulta)}
+                 'nota': -50.0 + n, 'paginas': [], 'url': url_documento(d['caminho'], d['tipo'], doc_id, 1, consulta),
+                 '_titulo_bate': True}
             # melhores páginas do próprio documento (busca restrita à faixa dele: rápida)
             if d['pag_ini'] is not None:
                 try:
@@ -792,15 +830,71 @@ def buscar(consulta, tema=None, idioma=None, limite_docs=25, consulta_en=None):
             cobertura = sum(1 for r in raizes if r in tit) / len(raizes)
             g['nota'] *= (1 + 2.0 * cobertura)
     ordem.sort(key=lambda g: g['nota'])  # bm25: menor é melhor
-    return ordem
+    return _juntar_com_significado(ordem, grupos, gemeos, consulta, tema, idioma, limite_docs)
 
 
-def trechos_para_ia(consulta, n=6, idioma=None, tamanho=1400):
-    """Melhores páginas, com a janela de texto mais relevante de cada uma (para o RAG)."""
+def _juntar_com_significado(ordem, grupos, gemeos, consulta, tema, idioma, limite_docs):
+    """Mistura a lista por palavras com a por significado, por posição (RRF). O significado pesa mais (nas 30
+    perguntas de teste, dar às palavras o mesmo peso derrubou a precisão de 0,75 para 0,63); as palavras ficam
+    com peso 0,3 para nomes e termos exatos. Documento cujo título tem todos os termos continua no topo."""
+    sem = paginas_por_significado(consulta, k=200, idioma=idioma, tema=tema)
+    if not sem:
+        return ordem
+    por_sig = []
+    for r, sim in sem:
+        g = grupos.get(r['doc_id'])
+        if g is None:
+            g = gemeos.get(r['titulo'])
+            if g is None:
+                g = {'doc_id': r['doc_id'], 'titulo': r['titulo'], 'tema': r['tema'], 'idioma': r['idioma'],
+                     'tipo': r['tipo'], 'caminho': r['caminho'], 'total_paginas': r['paginas'],
+                     'situacao': r['situacao'], 'nota': 0.0, 'paginas': [],
+                     'url': url_documento(r['caminho'], r['tipo'], r['doc_id'], 1, consulta)}
+                gemeos[r['titulo']] = g
+            grupos[r['doc_id']] = g
+        elif g['doc_id'] != r['doc_id']:
+            continue
+        if not any(x is g for x in por_sig):
+            por_sig.append(g)
+        if len(g['paginas']) < 3 and all(x['pagina'] != r['pagina'] for x in g['paginas']):
+            g['paginas'].append({'pagina': r['pagina'], 'trecho': _trecho_simples(r['texto'], consulta),
+                                 'url': url_documento(r['caminho'], r['tipo'], r['doc_id'], r['pagina'], consulta)})
+    nota = {}
+    for pos, g in enumerate(por_sig):
+        nota[id(g)] = 1.0 / (60 + pos)
+    todos = list(por_sig)
+    for pos, g in enumerate(ordem):
+        if id(g) not in nota:
+            nota[id(g)] = 0.0
+            todos.append(g)
+        nota[id(g)] += 0.3 / (60 + pos) + (1.0 if g.get('_titulo_bate') else 0.0)
+    todos.sort(key=lambda g: -nota[id(g)])
+    for g in todos:
+        g['nota'] = -round(nota[id(g)], 6)   # menor é melhor, como antes
+        g.pop('_titulo_bate', None)
+    return todos[:limite_docs]
+
+
+def trechos_para_ia(consulta, n=6, idioma=None, tamanho=1400, significado=True):
+    """Melhores páginas, com a janela de texto mais relevante de cada uma (para o RAG).
+    Com a busca por significado disponível (e significado=True), ela vem primeiro (cada trecho leva '_sim', a
+    semelhança); a busca por palavras só completa se faltar."""
     con = conexao()
     saida = []
     vistos = set()
     por_doc = {}
+    for r, sim in (paginas_por_significado(consulta, k=n * 4, idioma=idioma) if significado else []):
+        chave = (r['titulo'], r['pagina'])
+        if chave in vistos or por_doc.get(r['titulo'], 0) >= 2:
+            continue
+        vistos.add(chave)
+        por_doc[r['titulo']] = por_doc.get(r['titulo'], 0) + 1
+        saida.append({'fonte': 'doc', 'titulo': r['titulo'], 'tema': r['tema'], 'idioma': r['idioma'],
+                      'pagina': r['pagina'], 'texto': textos.trecho_relevante(r['texto'], consulta, tamanho),
+                      'url': url_documento(r['caminho'], r['tipo'], r['doc_id'], r['pagina'], consulta),
+                      '_sim': round(sim, 4)})
+        if len(saida) >= n:
+            return saida
     # 1º) documentos cujo TÍTULO trata do assunto ("Queimaduras", "Manual de ..."): a melhor página
     # de cada um. Evita que a IA receba páginas avulsas que só citam a palavra de passagem.
     raros = sem_comuns(consulta) or consulta

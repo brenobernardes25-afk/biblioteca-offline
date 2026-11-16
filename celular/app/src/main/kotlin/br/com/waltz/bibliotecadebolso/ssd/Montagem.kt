@@ -57,7 +57,12 @@ import kotlin.coroutines.coroutineContext
 
 data class ResultadoTeste(val gravou: Boolean, val acima4Gb: Boolean, val livre: Long, val total: Long, val erro: String?)
 
-data class ArquivoKit(val prio: Int, val tipo: String, val rel: String, val tam: Long, val url: String)
+data class ArquivoKit(
+    val prio: Int, val tipo: String, val rel: String, val tam: Long, val url: String,
+    val sha: String = "",
+    /** Outro endereço para o mesmo arquivo, tentado se o primeiro falhar. */
+    val reserva: String = "",
+)
 
 /** Partes sem Android: fáceis de testar. */
 object RegrasKit {
@@ -68,8 +73,40 @@ object RegrasKit {
         if (c.size < 5) return null
         val rel = c[2]
         if (!caminhoSeguro(rel)) return null
-        return ArquivoKit(c[0].toIntOrNull() ?: return null, c[1], rel, c[3].toLongOrNull() ?: 0, c[4])
+        // A 6ª coluna (SHA-256) é opcional: listas antigas não têm, e "-" quer dizer "sem conferência".
+        val sha = c.getOrNull(5)?.trim()?.lowercase()?.takeIf { s -> s.length == 64 && s.all { it in "0123456789abcdef" } }.orEmpty()
+        // A 7ª coluna (opcional) é a cópia nossa nos Releases do GitHub. Quando o site original é dos frágeis
+        // (lento, ou que recusa celular), a cópia vai na frente e o site vira a reserva.
+        val copia = c.getOrNull(6)?.trim()?.takeIf { it.startsWith("https://") }.orEmpty()
+        val fragil = FRAGEIS.any { c[4].contains(it) }
+        val (url, reserva) = if (copia.isNotEmpty() && fragil) copia to c[4] else c[4] to copia
+        return ArquivoKit(c[0].toIntOrNull() ?: return null, c[1], rel, c[3].toLongOrNull() ?: 0, url, sha, reserva)
     }
+
+    val FRAGEIS = listOf("web.archive.org/", "trueprepper.com/")
+
+    /** Tamanho que o próprio .zim diz ter (posição do checksum + 16), ou null se o cabeçalho não serve. */
+    fun tamanhoDoZim(cab: ByteArray): Long? {
+        if (cab.size < 80 || !String(cab, 0, 4, Charsets.ISO_8859_1).startsWith("ZIM\u0004")) return null
+        var v = 0L
+        for (i in 79 downTo 72) v = (v shl 8) or (cab[i].toLong() and 0xFF)
+        return if (v > 0) v + 16 else null
+    }
+
+    /** O que mostrar sobre o ritmo do download. velocidade < 0: ainda medindo. */
+    fun ritmo(velocidade: Double, paradoS: Long, faltam: Long): String = when {
+        velocidade < 0 -> "Medindo a velocidade…"
+        paradoS > 180 -> "Sem receber nada há ${paradoS / 60} min. A internet ou o site estão parados; continua tentando sozinho."
+        velocidade < 20_000 -> "Quase parado nos últimos minutos. Continua tentando sozinho."
+        else -> "${br.com.waltz.bibliotecadebolso.util.bytesLegivel(velocidade.toLong())}/s nos últimos minutos · " +
+            br.com.waltz.bibliotecadebolso.util.tempoRestante((faltam / velocidade).toLong())
+    }
+
+    /** Arquivos a partir deste tamanho ficam para o fim da fila. */
+    const val GIGANTE = 50_000_000_000L
+
+    /** Acima disto o SHA-256 não é conferido no celular: reler o arquivo inteiro pelo USB levaria horas. */
+    const val LIMITE_SHA = 4_000_000_000L
 
     /** O arquivo vem da internet: nada de escapar da pasta escolhida. */
     fun caminhoSeguro(rel: String) = rel.isNotEmpty() && !rel.startsWith("/") && !rel.contains('\\') &&
@@ -110,19 +147,44 @@ data class EstadoMontagem(
     val totais: TotaisMontagem = TotaisMontagem(),
     val pausada: Boolean = false,
     val terminou: Boolean = false,
-)
+    /** Bytes já gravados dos arquivos que estão baixando agora (os totais só contam arquivo terminado). */
+    val bytesAndando: Long = 0,
+    /** O maior arquivo em andamento, para a tela mostrar que não travou. */
+    val atual: String? = null,
+    val atualFeito: Long = 0,
+    val atualTam: Long = 0,
+    /** Bytes por segundo nos últimos minutos. Negativo: ainda medindo. */
+    val velocidade: Double = -1.0,
+    /** Há quantos segundos não chega nada. */
+    val paradoS: Long = 0,
+) {
+    val bytesFeitos get() = totais.bytesFeitos + bytesAndando
+}
 
-private class BancoMontagem(ctx: Context) : SQLiteOpenHelper(ctx, "montagem.db", null, 1) {
+private class BancoMontagem(ctx: Context) : SQLiteOpenHelper(ctx, "montagem.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE arq(rel TEXT PRIMARY KEY, prio INTEGER, tipo TEXT, tam INTEGER, url TEXT,
-               status TEXT NOT NULL DEFAULT 'pendente', tentativas INTEGER NOT NULL DEFAULT 0, erro TEXT)"""
+               status TEXT NOT NULL DEFAULT 'pendente', tentativas INTEGER NOT NULL DEFAULT 0, erro TEXT, sha TEXT, reserva TEXT)"""
         )
         db.execSQL("CREATE INDEX arq_fila ON arq(status, prio, tam)")
         db.execSQL("CREATE TABLE meta(chave TEXT PRIMARY KEY, valor TEXT)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, a: Int, b: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, a: Int, b: Int) {
+        if (a < 2) {
+            db.execSQL("ALTER TABLE arq ADD COLUMN sha TEXT")
+            db.execSQL("ALTER TABLE arq ADD COLUMN reserva TEXT")
+        }
+    }
+
+    /** Os motivos de falha mais comuns, para o relatório. */
+    fun motivos(limite: Int): List<Pair<String, Int>> =
+        readableDatabase.rawQuery("SELECT COALESCE(erro,''), COUNT(*) FROM arq WHERE status='falhou' GROUP BY 1 ORDER BY 2 DESC LIMIT $limite", null).use { c ->
+            val r = ArrayList<Pair<String, Int>>()
+            while (c.moveToNext()) r += c.getString(0) to c.getInt(1)
+            r
+        }
 
     fun meta(c: String): String? = readableDatabase.rawQuery("SELECT valor FROM meta WHERE chave=?", arrayOf(c))
         .use { if (it.moveToFirst()) it.getString(0) else null }
@@ -140,12 +202,19 @@ private class BancoMontagem(ctx: Context) : SQLiteOpenHelper(ctx, "montagem.db",
         val filtro = hosts.joinToString("") { " AND url NOT LIKE ?" }
         val args = hosts.map { "%://$it/%" }.toTypedArray()
         val limite = excluir.size + 1
+        // Os gigantes (220 GB, 127 GB) vão para o fim: sozinhos, seguravam a fila por dias.
         readableDatabase.rawQuery(
-            "SELECT prio,tipo,rel,tam,url FROM arq WHERE status='pendente'$filtro ORDER BY prio,tam LIMIT $limite", args,
+            "SELECT prio,tipo,rel,tam,url,sha,reserva FROM arq WHERE status='pendente'$filtro " +
+                "ORDER BY (tam >= ${RegrasKit.GIGANTE}),prio,tam LIMIT $limite", args,
         ).use { c ->
             while (c.moveToNext()) {
                 val rel = c.getString(2)
-                if (rel !in excluir) return ArquivoKit(c.getInt(0), c.getString(1), rel, c.getLong(3), c.getString(4))
+                if (rel !in excluir) {
+                    return ArquivoKit(
+                        c.getInt(0), c.getString(1), rel, c.getLong(3), c.getString(4),
+                        c.getString(5).orEmpty(), c.getString(6).orEmpty(),
+                    )
+                }
             }
         }
         return null
@@ -198,6 +267,26 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
     private val umaPorVez = Mutex()
     private val emCurso = ConcurrentHashMap.newKeySet<String>()
     private val chamadas = ConcurrentHashMap<String, okhttp3.Call>()
+
+    /** Quanto já chegou de cada arquivo em andamento: é o que deixa a tela honesta com arquivo grande. */
+    private class Andando(val tam: Long, @Volatile var feito: Long)
+    private val andando = ConcurrentHashMap<String, Andando>()
+    private val recebidos = java.util.concurrent.atomic.AtomicLong()
+    private val amostras = ArrayDeque<Pair<Long, Long>>()
+    private var ultimoAvanco = 0L
+
+    /** O Android recusou o serviço em primeiro plano: a tela explica, e abrir o app recomeça direito. */
+    @Volatile var limitado: String? = null
+
+    /** Chamado quando o app volta para a tela: é o que libera de novo o download em segundo plano. */
+    fun aoAbrirApp() {
+        if (limitado == null || !ativa || app.prefs.montagemPausada) return
+        limitado = null
+        app.diario.escrever("montagem: app aberto, recomeçando o download em primeiro plano")
+        iniciar(substituir = true)
+    }
+
+    fun motivos(n: Int = 8) = db.motivos(n)
     private val limite = LimiteHost()
     private val transferidor by lazy { Transferidor(app.http) }
     private val wm get() = WorkManager.getInstance(ctx)
@@ -291,7 +380,23 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
     }
 
     private fun etapa(t: String, aviso: String? = null) {
-        estado.value = estado.value.copy(ativa = true, etapa = t, aviso = aviso, totais = db.totais())
+        val agora = android.os.SystemClock.elapsedRealtime()
+        val total = recebidos.get()
+        synchronized(amostras) {
+            if (amostras.isEmpty() || total > amostras.last().second) ultimoAvanco = agora
+            amostras.addLast(agora to total)
+            while (amostras.size > 2 && agora - amostras.first().first > JANELA_MS) amostras.removeFirst()
+        }
+        val (t0, b0) = synchronized(amostras) { amostras.first() }
+        val dt = (agora - t0) / 1000.0
+        val maior = andando.entries.filter { it.value.tam > 200_000_000L }.maxByOrNull { it.value.tam }
+        estado.value = estado.value.copy(
+            ativa = true, etapa = t, aviso = aviso ?: limitado, totais = db.totais(),
+            bytesAndando = andando.values.sumOf { it.feito },
+            atual = maior?.key?.substringAfterLast('/'), atualFeito = maior?.value?.feito ?: 0, atualTam = maior?.value?.tam ?: 0,
+            velocidade = if (dt >= 20 && andando.isNotEmpty()) (total - b0) / dt else -1.0,
+            paradoS = if (andando.isEmpty()) 0 else (agora - ultimoAvanco) / 1000,
+        )
     }
 
     /** Sem índice no SSD, os PDFs que já chegaram são achados pelo nome do arquivo. */
@@ -400,6 +505,7 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
             for (i in itens) {
                 v.clear()
                 v.put("rel", i.rel); v.put("prio", i.prio); v.put("tipo", i.tipo); v.put("tam", i.tam); v.put("url", i.url)
+                v.put("sha", i.sha); v.put("reserva", i.reserva)
                 v.put("status", if (i.rel in prontos) "pronto" else "pendente")
                 w.insertWithOnConflict("arq", null, v, SQLiteDatabase.CONFLICT_IGNORE)
             }
@@ -452,6 +558,7 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
                     db.marcar(item.rel, "falhou", "Erro inesperado neste arquivo.")
                 } finally {
                     limite.terminou(host, ok)
+                    andando.remove(item.rel)
                     emCurso -= item.rel
                 }
             }
@@ -479,17 +586,41 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
         var relFinal = item.rel
         var tentativas = 0
         var catalogoFeito = false
+        var jaRepetiu = false
+        val meu = Andando(item.tam, saida.tamanho)
+        andando[item.rel] = meu
+        if (item.tam >= RegrasKit.GIGANTE) app.diario.escrever("montagem: começando arquivo gigante ${item.rel} (${bytesLegivel(item.tam)}), já tem ${bytesLegivel(meu.feito)}")
         while (true) {
             coroutineContext.ensureActive()
             try {
                 val destino = if (relFinal == item.rel) saida else SaidaSaf(a, "$relFinal.part")
                 val recebido = try {
-                    transferidor.baixar(url, destino, aoChamar = { chamadas[item.rel] = it })
+                    transferidor.baixar(
+                        url, destino,
+                        aoChamar = { chamadas[item.rel] = it },
+                        aoProgredir = { n ->
+                            val d = n - meu.feito
+                            if (d > 0) recebidos.addAndGet(d)
+                            meu.feito = n
+                        },
+                    )
                 } finally {
                     chamadas.remove(item.rel)
                 }
                 val relP = "$relFinal.part"
-                if (!conferir(a, relP, relFinal, recebido, item, relFinal != item.rel)) return false
+                val problema = conferir(a, relP, relFinal, recebido, item, relFinal != item.rel)
+                if (problema != null) {
+                    a.apagar(relP)
+                    meu.feito = 0
+                    app.diario.escrever("montagem: ${item.rel}: $problema")
+                    // Veio estragado: baixa de novo uma vez antes de desistir.
+                    if (!jaRepetiu) {
+                        jaRepetiu = true
+                        continue
+                    }
+                    db.marcar(item.rel, "falhou", problema)
+                    return false
+                }
                 if (a.info(relFinal) != null) a.apagar(relFinal)
                 a.renomear(relP, relFinal.substringAfterLast('/'))
                 a.garantirArquivo("$relFinal.ok")
@@ -510,6 +641,13 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
                     limite.terminou(host, false)
                     delay(30_000L * tentativas)
                     limite.comecou(host)
+                    continue
+                }
+                // O primeiro endereço recusou: tenta a reserva antes de qualquer outra coisa.
+                if (item.reserva.isNotEmpty() && url == item.url && relFinal == item.rel) {
+                    app.diario.escrever("montagem: ${item.rel}: erro ${e.codigo} no primeiro endereço; indo para a reserva")
+                    url = item.reserva
+                    tentativas = 0
                     continue
                 }
                 // Enciclopédia que saiu do ar: pega a versão mais nova do mesmo livro, como faz o PC.
@@ -539,6 +677,12 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
                     continue
                 }
                 if (++tentativas >= 5) {
+                    if (item.reserva.isNotEmpty() && url == item.url && relFinal == item.rel) {
+                        app.diario.escrever("montagem: ${item.rel}: o primeiro endereço não respondeu; indo para a reserva")
+                        url = item.reserva
+                        tentativas = 0
+                        continue
+                    }
                     db.marcar(item.rel, "falhou", "Não consegui baixar: ${e.message}")
                     return false
                 }
@@ -559,23 +703,46 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
         return a.ler(rel).use { val st = Os.fstatvfs(it.fileDescriptor); st.f_bavail * st.f_frsize }
     }
 
-    private fun conferir(a: ArvoreSaf, relP: String, rel: String, recebido: Long, item: ArquivoKit, outraVersao: Boolean): Boolean {
-        val ini = ByteArray(8)
+    /** Null se o arquivo recebido está inteiro; senão, o que há de errado com ele. */
+    private fun conferir(a: ArvoreSaf, relP: String, rel: String, recebido: Long, item: ArquivoKit, outraVersao: Boolean): String? {
+        val ini = ByteArray(80)
+        val ehZim = rel.lowercase().endsWith(".zim")
         val inteiro = a.ler(relP).use { pfd ->
             FileInputStream(pfd.fileDescriptor).use { s ->
-                val n = s.read(ini).coerceAtLeast(0)
-                if (!RegrasKit.comecoCerto(rel, ini.copyOf(n))) return@use false
+                var n = 0
+                while (n < ini.size) {
+                    val k = s.read(ini, n, ini.size - n)
+                    if (k < 0) break
+                    n += k
+                }
+                if (!RegrasKit.comecoCerto(rel, ini.copyOf(minOf(n, 8)))) return@use false
+                // O .zim diz o próprio tamanho: é a conferência que vale para os gigantes.
+                if (ehZim) return@use RegrasKit.tamanhoDoZim(ini.copyOf(n))?.let { it == recebido } ?: true
                 if (!rel.lowercase().endsWith(".pdf")) return@use true
                 Transferidor.pdfInteiro(s.channel)
             }
         }
-        val tamanhoBom = outraVersao || item.tam == 0L || Transferidor.tamanhoConfere(recebido, item.tam, item.tipo == "zim")
-        if (!inteiro || !tamanhoBom) {
-            a.apagar(relP)
-            db.marcar(item.rel, "falhou", if (!inteiro) "O arquivo veio cortado ou é outra coisa. Não foi guardado." else "Veio com tamanho diferente do esperado.")
-            return false
+        if (!inteiro) return "O arquivo veio cortado ou é outra coisa. Não foi guardado."
+        // Instalador de "última versão" (sem SHA na lista) muda de tamanho no site: não é erro.
+        val tamanhoLivre = item.sha.isEmpty() && item.rel.startsWith("6_Instaladores/")
+        val tamanhoBom = outraVersao || tamanhoLivre || item.tam == 0L || Transferidor.tamanhoConfere(recebido, item.tam, item.tipo == "zim")
+        if (!tamanhoBom) return "Veio com tamanho diferente do esperado."
+        if (item.sha.isNotEmpty() && !outraVersao && recebido == item.tam && recebido <= RegrasKit.LIMITE_SHA) {
+            val md = java.security.MessageDigest.getInstance("SHA-256")
+            a.ler(relP).use { pfd ->
+                FileInputStream(pfd.fileDescriptor).use { s ->
+                    val buf = ByteArray(1 shl 20)
+                    while (true) {
+                        val k = s.read(buf)
+                        if (k < 0) break
+                        md.update(buf, 0, k)
+                    }
+                }
+            }
+            val sha = md.digest().joinToString("") { "%02x".format(it) }
+            if (sha != item.sha) return "Veio corrompido (a conferência SHA-256 não bateu). Não foi guardado."
         }
-        return true
+        return null
     }
 
     private object Avisos {
@@ -599,6 +766,7 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
         const val ID_FIM = 4
         const val PARALELOS = 3
         const val FOLGA_SSD = 500_000_000L
+        const val JANELA_MS = 300_000L
         const val ARQ_MANIFESTO = "_Baixador/instalador/manifesto.tsv.gz"
         const val URL_ULTIMO_KIT = "https://api.github.com/repos/brenobernardes25-afk/biblioteca-offline/releases/latest"
     }
@@ -607,11 +775,60 @@ class Montagem(private val ctx: Context, private val app: BolsoApp) {
 class MontagemWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     private val app = ctx.applicationContext as BolsoApp
 
+    private companion object {
+        const val PRAZO_TRAVA_MS = 30 * 60 * 1000L
+    }
+
+    /**
+     * No Android 15 em diante, o serviço do tipo "dataSync" só pode rodar 6 horas por dia em segundo plano;
+     * depois disso o download ficava reduzido a pedaços de 10 minutos (o caso do SSD que "parou" com 41 GB).
+     * Gravar num SSD pelo USB é trabalho com aparelho conectado ("connectedDevice"), que não tem esse limite.
+     */
+    private var tipoServico = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+    private var emPrimeiroPlano = false
+    private var ultimaTentativa = 0L
+
+    private suspend fun primeiroPlano() {
+        val agora = android.os.SystemClock.elapsedRealtime()
+        if (emPrimeiroPlano) {
+            try {
+                setForeground(aviso())      // só atualiza o texto da notificação
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+            return
+        }
+        if (ultimaTentativa != 0L && agora - ultimaTentativa < 60_000) return
+        ultimaTentativa = agora
+        val tipos = if (Build.VERSION.SDK_INT >= 35) {
+            listOf(ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            listOf(ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        }
+        for (tipo in tipos) {
+            tipoServico = tipo
+            try {
+                setForeground(aviso())
+                emPrimeiroPlano = true
+                app.montagem.limitado = null
+                app.diario.escrever("montagem: em primeiro plano (tipo $tipo)")
+                return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                app.diario.escrever("montagem: primeiro plano (tipo $tipo) recusado: ${e.javaClass.simpleName}: ${e.message}")
+            }
+        }
+        app.montagem.limitado = "O Android limitou o download em segundo plano. Abra o app e deixe esta tela aberta: ele recomeça sozinho."
+    }
+
     private fun aviso(): ForegroundInfo {
         val e = app.montagem.estado.value
         val t = e.totais
-        val pct = if (t.bytesTotal > 0) (t.bytesFeitos * 1000 / t.bytesTotal).toInt() else 0
-        val texto = "${inteiro(t.prontos)} de ${inteiro(t.total)} · ${bytesLegivel(t.bytesFeitos)} de ${bytesLegivel(t.bytesTotal)}"
+        val pct = if (t.bytesTotal > 0) (e.bytesFeitos * 1000 / t.bytesTotal).toInt() else 0
+        val texto = "${inteiro(t.prontos)} de ${inteiro(t.total)} · ${bytesLegivel(e.bytesFeitos)} de ${bytesLegivel(t.bytesTotal)}" +
+            (e.atual?.let { " · agora: $it" } ?: "")
         val nm = applicationContext.getSystemService(android.app.NotificationManager::class.java)
         if (nm.getNotificationChannel(Montagem.CANAL) == null) {
             nm.createNotificationChannel(
@@ -627,7 +844,7 @@ class MontagemWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(c
             .setOnlyAlertOnce(true)
             .build()
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(Montagem.ID_PROGRESSO, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            ForegroundInfo(Montagem.ID_PROGRESSO, n, tipoServico)
         } else {
             ForegroundInfo(Montagem.ID_PROGRESSO, n)
         }
@@ -640,24 +857,17 @@ class MontagemWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(c
         // Tela desligada sem parar o download. Só enquanto baixa (seção 6.2).
         val trava = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "bolso:montagem").apply { setReferenceCounted(false) }
         return try {
-            trava.acquire(12 * 60 * 60 * 1000L)
-            try {
-                setForeground(aviso())
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                app.diario.escrever("montagem: primeiro plano recusado: ${e.javaClass.simpleName}")
-            }
+            // Renovada a cada passo do relógio: com prazo fixo de 12 h, um arquivo de dias ficava sem a trava no meio.
+            trava.acquire(PRAZO_TRAVA_MS)
+            primeiroPlano()
             app.montagem.rodar {
-                try {
-                    setForeground(aviso())
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                }
+                trava.acquire(PRAZO_TRAVA_MS)
+                primeiroPlano()
             }
             Result.success()
         } catch (e: CancellationException) {
+            // Fica no registro por que o Android parou o trabalho (ex.: -128 = prazo do serviço em primeiro plano).
+            if (Build.VERSION.SDK_INT >= 31) app.diario.escrever("montagem: trabalho interrompido (motivo do Android: $stopReason)")
             throw e
         } catch (e: Exception) {
             app.diario.escrever("montagem: nova tentativa depois de: $e")

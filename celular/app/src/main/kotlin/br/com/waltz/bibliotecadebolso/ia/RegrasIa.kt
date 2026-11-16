@@ -33,7 +33,7 @@ object RegrasIa {
             "tratar do assunto, responda apenas: \"$NAO_ENCONTREI\" e, numa segunda linha, sugira palavras para " +
             "buscar. Se você respondeu com base nos trechos, termine na última informação, sem avisos nem sugestões."
 
-    private val MODELO_4B = ModeloIa("ia:qwen3-4b", "Qwen3-4B-Instruct-2507-Q4_K_M.gguf", "2,5 GB", 3000, true)
+    private val MODELO_4B = ModeloIa("ia:qwen3-4b", "Qwen3-4B-Instruct-2507-Q4_K_M.gguf", "2,5 GB", 2200, true)
 
     /**
      * Só o 4B, em celular de 8 GB. O Qwen3 1.7B (6 GB) saiu: no teste, errou as quantidades do soro caseiro mesmo com a

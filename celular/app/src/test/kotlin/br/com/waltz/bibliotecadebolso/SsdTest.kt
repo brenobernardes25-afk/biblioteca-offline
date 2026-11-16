@@ -62,4 +62,61 @@ class SsdTest {
         assertFalse(RegrasKit.comecoCerto("a.txt", "  <html>".toByteArray()))
         assertTrue(RegrasKit.comecoCerto("a.txt", "Biblioteca".toByteArray()))
     }
+
+    @Test
+    fun leOSha256QuandoALinhaTem() {
+        val sha = "ab".repeat(32)
+        assertEquals(sha, RegrasKit.lerLinha("2	baixar	5_Acervo/a.pdf	123	https://x/a.pdf	" + sha.uppercase())!!.sha)
+        // Lista antiga (5 colunas), "-" e lixo: sem conferência, mas a linha continua valendo.
+        assertEquals("", RegrasKit.lerLinha("2	baixar	5_Acervo/a.pdf	123	https://x/a.pdf")!!.sha)
+        assertEquals("", RegrasKit.lerLinha("2	baixar	5_Acervo/a.pdf	123	https://x/a.pdf	-")!!.sha)
+        assertEquals("", RegrasKit.lerLinha("2	baixar	5_Acervo/a.pdf	123	https://x/a.pdf	" + "zz".repeat(32))!!.sha)
+    }
+
+    @Test
+    fun oZimDizOProprioTamanho() {
+        val cab = ByteArray(80)
+        "ZIM".toByteArray(Charsets.ISO_8859_1).copyInto(cab)
+        // Posição do checksum = 220 GB - 16, em 8 bytes, o menos significativo primeiro.
+        var v = 220_000_000_000L - 16
+        for (i in 72..79) {
+            cab[i] = (v and 0xFF).toByte()
+            v = v shr 8
+        }
+        assertEquals(220_000_000_000L, RegrasKit.tamanhoDoZim(cab))
+        assertNull(RegrasKit.tamanhoDoZim(cab.copyOf(40)))
+        assertNull(RegrasKit.tamanhoDoZim(ByteArray(80)))
+    }
+
+    @Test
+    fun oRitmoDizAVerdade() {
+        assertEquals("Medindo a velocidade…", RegrasKit.ritmo(-1.0, 0, 1000))
+        assertTrue(RegrasKit.ritmo(2_000_000.0, 0, 7_200_000_000L).contains("2 MB/s"))
+        assertTrue(RegrasKit.ritmo(2_000_000.0, 0, 7_200_000_000L).contains("1 h"))
+        assertTrue(RegrasKit.ritmo(2_000_000.0, 600, 1000).startsWith("Sem receber nada há 10 min"))
+        assertTrue(RegrasKit.ritmo(100.0, 0, 1000).startsWith("Quase parado"))
+    }
+
+    @Test
+    fun oRelatorioTemAsPartesCertas() {
+        val t = br.com.waltz.bibliotecadebolso.util.Relatorio.montar(
+            listOf("app 1.1.0"), emptyList(), listOf("Situação: Baixando"), listOf("x".repeat(500)),
+        )
+        assertTrue(t.startsWith("RELATÓRIO DA BIBLIOTECA DE BOLSO"))
+        assertTrue(t.contains("MONTAGEM NO SSD") && t.contains("  Situação: Baixando"))
+        assertFalse(t.contains("NO CELULAR"))
+        assertTrue(t.lines().none { it.length > 230 })
+    }
+
+    @Test
+    fun aCopiaNossaVaiNaFrenteQuandoOSiteEFragil() {
+        val copia = "https://github.com/x/y/releases/download/t/a.pdf"
+        val lento = RegrasKit.lerLinha("2\tbaixar\t5_Acervo/a.pdf\t1\thttps://web.archive.org/web/1id_/http://s/a.pdf\t-\t$copia")!!
+        assertEquals(copia, lento.url)
+        assertTrue(lento.reserva.startsWith("https://web.archive.org/"))
+        val firme = RegrasKit.lerLinha("2\tbaixar\t5_Acervo/a.pdf\t1\thttps://bvsms.saude.gov.br/a.pdf\t-\t$copia")!!
+        assertEquals("https://bvsms.saude.gov.br/a.pdf", firme.url)
+        assertEquals(copia, firme.reserva)
+        assertEquals("", RegrasKit.lerLinha("2\tbaixar\t5_Acervo/a.pdf\t1\thttps://s/a.pdf\t-\t-")!!.reserva)
+    }
 }

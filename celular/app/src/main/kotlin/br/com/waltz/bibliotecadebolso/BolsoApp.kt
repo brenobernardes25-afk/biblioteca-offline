@@ -38,6 +38,13 @@ class BolsoApp : Application() {
     val controle by lazy { ControleDownload(this, this) }
     val ia by lazy { br.com.waltz.bibliotecadebolso.ia.AssistenteIa(this, this) }
     val ssd by lazy { br.com.waltz.bibliotecadebolso.ssd.BibliotecaSsd(this, this) }
+    /** O mapa do Brasil dentro do app, lido direto do pen drive (tela Mapa). */
+    val mapa by lazy {
+        br.com.waltz.bibliotecadebolso.mapa.ServidorMapa(ssd.fonteMapa, diario::escrever) {
+            if (ssd.estado.value.conectado) null
+            else "Ligue o pen drive no celular e toque em \"Usar este pen drive\" na tela inicial do app."
+        }
+    }
     val montagem by lazy { br.com.waltz.bibliotecadebolso.ssd.Montagem(this, this) }
     val indicePdf by lazy { br.com.waltz.bibliotecadebolso.busca.IndicePdf(this, banco, diario) }
     val importador by lazy { br.com.waltz.bibliotecadebolso.download.Importador(this, this) }

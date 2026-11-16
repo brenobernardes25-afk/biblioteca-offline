@@ -16,6 +16,12 @@ class MainActivity : ComponentActivity() {
         (application as br.com.waltz.bibliotecadebolso.BolsoApp).ia.aoSairDoApp()
     }
 
+    /** Voltar ao app libera de novo o download em segundo plano, se o Android tiver limitado. */
+    override fun onResume() {
+        super.onResume()
+        (application as br.com.waltz.bibliotecadebolso.BolsoApp).montagem.aoAbrirApp()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

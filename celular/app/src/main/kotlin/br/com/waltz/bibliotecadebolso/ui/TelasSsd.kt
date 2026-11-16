@@ -29,7 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import br.com.waltz.bibliotecadebolso.ssd.RegrasKit
 import br.com.waltz.bibliotecadebolso.ssd.ResultadoTeste
+import br.com.waltz.bibliotecadebolso.util.Relatorio
 import br.com.waltz.bibliotecadebolso.ssd.SituacaoIndiceSsd
 import br.com.waltz.bibliotecadebolso.ssd.SituacaoSsd
 import br.com.waltz.bibliotecadebolso.util.bytesLegivel
@@ -151,6 +153,7 @@ private fun QueSsdUsar() {
 @Composable
 fun TelaMontar(vm: AppVM) {
     val m by vm.app.montagem.estado.collectAsStateWithLifecycle()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val escopo = rememberCoroutineScope()
     var teste by remember { mutableStateOf<Pair<Uri, ResultadoTeste>?>(null) }
     var testando by remember { mutableStateOf(false) }
@@ -181,13 +184,26 @@ fun TelaMontar(vm: AppVM) {
                 m.aviso?.let { Text(it, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary) }
                 if (t.total > 0) {
                     LinearProgressIndicator(
-                        progress = { if (t.bytesTotal > 0) t.bytesFeitos.toFloat() / t.bytesTotal else 0f },
+                        progress = { if (t.bytesTotal > 0) m.bytesFeitos.toFloat() / t.bytesTotal else 0f },
                         modifier = Modifier.fillMaxWidth().height(8.dp),
                     )
                     Text(
-                        "${inteiro(t.prontos)} de ${inteiro(t.total)} · ${bytesLegivel(t.bytesFeitos)} de ${bytesLegivel(t.bytesTotal)}",
+                        "${inteiro(t.prontos)} de ${inteiro(t.total)} arquivos · ${bytesLegivel(m.bytesFeitos)} de ${bytesLegivel(t.bytesTotal)}",
                         style = MaterialTheme.typography.bodyLarge,
                     )
+                    if (!m.pausada && !m.terminou && m.etapa == "Baixando") {
+                        Text(
+                            RegrasKit.ritmo(m.velocidade, m.paradoS, (t.bytesTotal - m.bytesFeitos).coerceAtLeast(0)),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        m.atual?.let { nome ->
+                            val pct = if (m.atualTam > 0) (m.atualFeito * 100 / m.atualTam).coerceIn(0, 100) else 0
+                            Text(
+                                "Agora: $nome · ${bytesLegivel(m.atualFeito)} de ${bytesLegivel(m.atualTam)} ($pct%)",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
                 }
                 if (m.pausada) {
                     BotaoGrande("Retomar", { vm.app.montagem.retomar() })
@@ -209,11 +225,15 @@ fun TelaMontar(vm: AppVM) {
                         }
                     }
                 }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                Text("Precisa de ajuda? O relatório junta a situação do download num texto para colar na conversa.", style = MaterialTheme.typography.bodyMedium)
+                BotaoContorno("Copiar relatório", { Relatorio.copiar(ctx, vm.app) }, Modifier.fillMaxWidth())
             } else {
                 Text("Antes de começar", style = MaterialTheme.typography.headlineMedium)
                 Aviso("Leva dias, não horas.", "São cerca de 830 GB e 54 mil arquivos.")
                 Aviso("Deixe na tomada.", "Use um adaptador USB-C com entrada de carregador (hub com PD). Só com a bateria do celular, o SSD não aguenta.")
                 Aviso("Não tire o cabo.", "O app retoma sozinho, mas cada desconexão atrasa.")
+                Aviso("Os arquivos gigantes ficam para o fim.", "A Survivor Library (220 GB) e a Wikipédia em inglês (127 GB) só baixam depois de todo o resto. A tela mostra o arquivo em andamento e quanto dele já veio.")
                 Aviso("O SSD precisa estar em exFAT.", "Muitos celulares não leem NTFS. O app confere, mas nunca formata nada: formatar apaga tudo e é com você, num computador.")
                 Aviso("O melhor caminho é um computador.", "Mesmo emprestado, com o INSTALAR_BIBLIOTECA.bat, é bem mais rápido e seguro.")
                 if (testando) {

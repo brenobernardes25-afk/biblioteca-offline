@@ -5,7 +5,13 @@ veja os [guias passo a passo](../README.md#escolha-a-sua-versão). Especificaç�
 [spec/bolso/ESPECIFICACAO_APP_CELULAR.md](spec/bolso/ESPECIFICACAO_APP_CELULAR.md).
 Licença: GPL-3.0 (por causa da libkiwix).
 
-## Estado: versão 1.0.0
+## Estado: versão 1.1.0
+
+Novo na 1.1.0, na montagem da biblioteca num SSD pelo celular: a tela mostra o arquivo em andamento, a
+porcentagem dele e a velocidade dos últimos minutos; os arquivos gigantes (mais de 50 GB) ficam para o fim;
+cada arquivo é conferido (SHA-256 até 4 GB, e o tamanho que o próprio .zim declara); o download não é mais
+limitado a 6 horas por dia em segundo plano no Android 15 em diante; e há o botão "Copiar relatório", em Sobre
+e na tela da montagem, que junta a situação num texto para colar na conversa de ajuda.
 
 Pronto: assistente de primeiro uso, downloads do Slim com retomada, busca e leitor dos .zim,
 "Atualizar biblioteca", trocar de versão, tela "O que faltou", Mapa, Sobre e licenças, logs
@@ -31,8 +37,20 @@ O APK sai em `app/build/outputs/apk/release/`. Em pasta muito funda, o Windows e
 `C:/temp/bolso/build/outputs/apk/release/`. Para testar o release no emulador, acrescente
 `-Pemulador=true` (inclui x86_64).
 
-O APK publicado é assinado com a chave do autor (a de depuração do computador dele). Um APK compilado por outra
-pessoa sai com outra chave: para instalar por cima do publicado, é preciso desinstalar antes.
+### Assinatura
+
+O Android só instala uma atualização por cima se ela vier assinada com a mesma chave do app já instalado.
+A chave do app publicado fica fora do repositório, com cópia de segurança. Para o release sair com ela,
+copie `assinatura.properties.exemplo` para `assinatura.properties` (que o Git ignora) e preencha.
+Para publicar, compile com a trava ligada:
+
+```bash
+./gradlew testDebugUnitTest assembleRelease -Ppublicar=true
+```
+
+Com `-Ppublicar=true`, a compilação só termina se a chave usada for a do app publicado (a impressão digital
+do certificado está no `app/build.gradle.kts`). Sem o `assinatura.properties`, o release sai com a chave de
+depuração de quem compilou: serve para testar, mas para instalar por cima do publicado é preciso desinstalar antes.
 
 ## Como o código está dividido
 

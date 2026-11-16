@@ -127,6 +127,7 @@ fun Raiz(vm: AppVM) {
                 Tela.Montar -> TelaMontar(vm)
                 Tela.Perguntar -> TelaPerguntar(vm)
                 Tela.Mapa -> TelaMapa(vm)
+                Tela.MapaBrasil -> TelaMapaBrasil(vm)
                 Tela.Sobre -> Sobre(vm)
                 Tela.Manual -> TelaManual(vm)
                 Tela.Importar -> TelaImportar(vm)
@@ -259,6 +260,7 @@ private fun Assistente(vm: AppVM) {
                     "Depois de baixado, funciona sem internet. Sem conta, sem anúncio, sem rastreio.",
                     style = MaterialTheme.typography.bodyLarge,
                 )
+                CartaoPendrive(vm) { vm.irParaInicio() }
                 Spacer(Modifier.height(12.dp))
                 BotaoGrande("Começar", { passo = 2 })
                 TextButton(
@@ -454,6 +456,9 @@ private fun Inicio(vm: AppVM) {
                     Icon(Icons.Filled.Info, contentDescription = "Sobre")
                 }
             }
+        }
+        if (ssd.situacao == SituacaoSsd.NENHUM) {
+            item { CartaoPendrive(vm) { } }
         }
         if (ssd.situacao != SituacaoSsd.NENHUM) {
             item {
@@ -973,36 +978,7 @@ private fun LinhaItem(i: ItemBanco) {
 
 // ---------- Mapa (seção 11) ----------
 
-@Composable
-private fun TelaMapa(vm: AppVM) {
-    val ctx = LocalContext.current
-    val instalado = remember {
-        ctx.packageManager.getLaunchIntentForPackage("app.organicmaps") != null
-    }
-    Column(Modifier.fillMaxSize()) {
-        Cabecalho("Mapa", vm)
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            if (instalado) {
-                Text("Os mapas ficam no Organic Maps, que funciona sem internet.", style = MaterialTheme.typography.bodyLarge)
-                BotaoGrande("Abrir o Organic Maps", {
-                    ctx.packageManager.getLaunchIntentForPackage("app.organicmaps")?.let(ctx::startActivity)
-                })
-            } else {
-                Text("Mapas sem internet", style = MaterialTheme.typography.headlineMedium)
-                Text("Enquanto ainda tiver internet:", style = MaterialTheme.typography.bodyLarge)
-                Text("1. Instale o app Organic Maps, que é gratuito.", style = MaterialTheme.typography.bodyLarge)
-                Text("2. Abra o app e baixe o mapa do seu estado (de 30 a 200 MB cada).", style = MaterialTheme.typography.bodyLarge)
-                Text("3. Pronto: depois é só tocar em Mapa aqui, mesmo sem internet.", style = MaterialTheme.typography.bodyLarge)
-            }
-        }
-    }
-}
+// A tela do Mapa fica em TelaMapa.kt.
 
 // ---------- Sobre ----------
 
@@ -1030,7 +1006,7 @@ private fun Sobre(vm: AppVM) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Biblioteca de Bolso", style = MaterialTheme.typography.headlineMedium)
-            Text("Uso pessoal e gratuito. Não substitui atendimento médico.", style = MaterialTheme.typography.titleMedium)
+            Text("Uso pessoal. Não substitui atendimento médico.", style = MaterialTheme.typography.titleMedium)
             Text("App de código aberto, licença GPL-3.0. Sem anúncios, sem analytics, sem login.", style = MaterialTheme.typography.bodyLarge)
             Text("@breno.paiva40 no Instagram", style = MaterialTheme.typography.bodyLarge)
             BotaoContorno("Abrir o manual", { vm.ir(Tela.Manual) }, Modifier.fillMaxWidth())
@@ -1044,8 +1020,13 @@ private fun Sobre(vm: AppVM) {
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             Text(
-                "Se algo der errado, exporte os logs e mande para o Breno. Eles ficam só no seu celular até você compartilhar.",
+                "Se algo der errado, toque em Copiar relatório e cole o texto na conversa com o Breno. Ele resume a situação do app, sem dados pessoais. Nada sai do celular até você colar.",
                 style = MaterialTheme.typography.bodyLarge,
+            )
+            BotaoGrande("Copiar relatório", { br.com.waltz.bibliotecadebolso.util.Relatorio.copiar(ctx, vm.app) })
+            Text(
+                "Se o Breno pedir mais detalhes, exporte os logs completos.",
+                style = MaterialTheme.typography.bodyMedium,
             )
             BotaoContorno("Exportar os logs", {
                 val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.arquivos", vm.app.diario.arquivo)

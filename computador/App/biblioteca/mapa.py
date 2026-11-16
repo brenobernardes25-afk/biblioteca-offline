@@ -153,7 +153,7 @@ def arquivo():
 def info():
     a = arquivo()
     if not a:
-        return {'ok': False, 'motivo': 'O mapa do Brasil para o PC ainda não está no SSD (rode _Baixador\\BAIXAR_MAPA_PC.bat).'}
+        return {'ok': False, 'motivo': config.no_disco('O mapa do Brasil para o PC ainda não está no SSD (rode _Baixador\\BAIXAR_MAPA_PC.bat).')}
     return {'ok': True, 'limites': a.limites, 'centro': a.centro, 'maxzoom': a.maxz, 'minzoom': a.minz,
             'gb': round(os.path.getsize(ARQUIVO) / 2**30, 2), 'lugares': os.path.exists(LUGARES)}
 

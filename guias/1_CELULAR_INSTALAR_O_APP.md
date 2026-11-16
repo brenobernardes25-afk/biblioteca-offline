@@ -25,7 +25,7 @@ da Play Store.
 
 1. **No celular**, abra este link no navegador (Chrome ou outro):
 
-   **[Baixar o app (Biblioteca_de_Bolso_1.0.0.apk, 47 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Biblioteca_de_Bolso_1.0.0.apk)**
+   **[Baixar o app (Biblioteca_de_Bolso_1.2.8.apk, 47 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.2.8/Biblioteca_de_Bolso_1.2.8.apk)**
 
    Se o navegador perguntar se quer baixar mesmo assim, toque em **Baixar**.
 

@@ -4,7 +4,7 @@ package br.com.waltz.bibliotecadebolso.ui
 val MANUAL: List<Pair<String, String>> = listOf(
     "O que é" to
         "Uma biblioteca de saúde, água, sobrevivência, agricultura e enciclopédias que funciona sem internet. " +
-        "Você baixa uma vez e depois usa em qualquer lugar. É de graça, sem conta e sem anúncio.",
+        "Você baixa uma vez e depois usa em qualquer lugar. Sem conta e sem anúncio.",
     "Qual versão escolher" to
         "Slim mínimo (13 GB): saúde, água, sobrevivência e o essencial da Embrapa. Serve para quase todo celular.\n\n" +
         "Slim (78 GB): tudo do mínimo, mais a Wikipédia em português completa, manuais militares, consertos e muito mais Embrapa.\n\n" +
@@ -48,7 +48,7 @@ val MANUAL: List<Pair<String, String>> = listOf(
         "Se algum arquivo não vier, ele aparece em O que faltou, com o motivo e o botão Tentar de novo. " +
         "Alguns sites recusam o download: o resto da biblioteca funciona normalmente.",
     "Mapa" to
-        "O botão Mapa abre o Organic Maps, se estiver instalado. Se não estiver, o app explica como instalar e baixar o mapa do seu estado.",
+        "Na tela Mapa, \"Abrir o mapa do Brasil\" mostra o Brasil inteiro direto do pen drive, sem instalar nada: busca de cidades, GPS, medir distâncias e marcar pontos. Para rotas, há o Organic Maps: o botão Instalar o põe a partir do pen drive, e o passo 2 explica como passar os mapas dele para dentro do celular, antes de precisar.",
     "Completo: ligar um SSD que já tem a biblioteca" to
         "1. Ligue o SSD no USB-C do celular.\n" +
         "2. Toque no ícone de disco no início e em Já tenho o SSD com a biblioteca.\n" +
@@ -67,9 +67,9 @@ val MANUAL: List<Pair<String, String>> = listOf(
         "Sem espaço: apague fotos e vídeos ou troque para o Slim mínimo, depois toque em Tentar de novo.\n\n" +
         "Parado em Esperando Wi-Fi: conecte no Wi-Fi ou desligue o Só no Wi-Fi.\n\n" +
         "Modo de economia de bateria: o download só continua na tomada ou com o modo desligado.\n\n" +
-        "Se continuar com problema, vá em Sobre > Exportar os logs e mande para o Breno.",
+        "Se continuar com problema, vá em Sobre > Copiar relatório e cole o texto na conversa com o Breno.",
     "Antes de desinstalar" to
         "Ao desinstalar, o Android pergunta se quer manter os dados. Diga sim, se pretende voltar a usar: senão, tudo que foi baixado é apagado.",
     "Importante" to
-        "Uso pessoal e gratuito. Não substitui atendimento médico: em emergência, procure ajuda sempre que puder.",
+        "Uso pessoal. Não substitui atendimento médico: em emergência, procure ajuda sempre que puder.",
 )

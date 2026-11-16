@@ -3,6 +3,7 @@ import json
 import logging
 import logging.handlers
 import os
+import re
 import shutil
 import threading
 
@@ -21,6 +22,17 @@ MAPAS = os.path.join(RAIZ, '2_Mapas')
 CACHE_PC = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'BibliotecaOffline', 'ia')
 INSTALADORES = os.path.join(RAIZ, '6_Instaladores')
 PROGRAMAS = os.path.join(RAIZ, 'Programas')
+# Pen drive pronto (Biblioteca Offline 2.0): o atalho "1 - ABRIR NO COMPUTADOR" fica na raiz.
+PEN_DRIVE = any(os.path.isfile(os.path.join(RAIZ, '1 - ABRIR NO COMPUTADOR' + ext)) for ext in ('.exe', '.bat'))
+
+
+def no_disco(texto):
+    """Textos da tela: no pen drive, "SSD" vira "pen drive" e o atalho de abrir é o do pen drive."""
+    if not PEN_DRIVE:
+        return texto
+    texto = texto.replace('ABRIR_BIBLIOTECA.bat', '1 - ABRIR NO COMPUTADOR')
+    return re.sub(r'\bSSD\b', 'pen drive', texto)
+
 
 ARQ_INDICE = os.path.join(DADOS, 'indice.db')
 ARQ_CONFIG = os.path.join(DADOS, 'config.json')
@@ -30,7 +42,9 @@ TMP = os.path.join(DADOS, 'tmp')
 PADRAO = {
     'modelo': 'auto',          # 'auto' (= o modelo rápido) ou nome do arquivo .gguf
     'minutos_ia': 60,          # desliga a IA após X minutos sem uso
-    'copia_pc': True,          # guarda uma cópia da IA no disco do computador (carrega em segundos)
+    # guarda uma cópia da IA no disco do computador (carrega em segundos). No pen drive vem desligada:
+    # nada é gravado no computador da pessoa sem ela pedir (liga em Situação).
+    'copia_pc': not PEN_DRIVE,
     'ia_ao_abrir': True,       # já liga a IA ao abrir o app (a 1ª pergunta não espera a carga)
     'ocr_fundo': True,         # lê os PDFs escaneados aos poucos (OCR do Windows) e os põe na busca
     'versao_cfg': 2,
@@ -76,14 +90,14 @@ def testar_escrita():
         os.remove(teste)
     except OSError as e:
         estado['somente_leitura'] = True
-        estado['aviso_disco'] = ('O SSD está somente leitura ou cheio. O app funciona, mas não vai '
-                                 'atualizar o índice nem salvar configurações. (%s)' % (e.strerror or e))
+        estado['aviso_disco'] = no_disco('O SSD está somente leitura ou cheio. O app funciona, mas não vai '
+                                         'atualizar o índice nem salvar configurações. (%s)' % (e.strerror or e))
         return False
     try:
         livre = shutil.disk_usage(RAIZ).free
         if livre < 200 * 1024 * 1024:
-            estado['aviso_disco'] = ('O SSD está quase cheio (%d MB livres). O índice pode não ser atualizado.'
-                                     % (livre // 2**20))
+            estado['aviso_disco'] = no_disco('O SSD está quase cheio (%d MB livres). O índice pode não ser '
+                                             'atualizado.' % (livre // 2**20))
     except OSError:
         pass
     return True

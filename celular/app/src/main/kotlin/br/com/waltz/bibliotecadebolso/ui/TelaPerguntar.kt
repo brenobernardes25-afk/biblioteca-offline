@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
@@ -38,6 +40,7 @@ import br.com.waltz.bibliotecadebolso.ia.EtapaIa
 import br.com.waltz.bibliotecadebolso.ia.OrigemModelo
 import br.com.waltz.bibliotecadebolso.ia.RegrasIa
 import br.com.waltz.bibliotecadebolso.ia.Trecho
+import br.com.waltz.bibliotecadebolso.ssd.SituacaoIndiceSsd
 import br.com.waltz.bibliotecadebolso.zim.ServidorZim
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -60,8 +63,15 @@ fun TelaPerguntar(vm: AppVM) {
     var origem by remember { mutableStateOf<OrigemModelo?>(null) }
     var conferiu by remember { mutableStateOf(false) }
     val resumo by vm.resumo.collectAsStateWithLifecycle()
+    val ssd by vm.app.ssd.estado.collectAsStateWithLifecycle()
     val modelo = ia.modelo
-    LaunchedEffect(resumo.totais.prontos) {
+    // Enquanto a IA trabalha, a tela não apaga sozinha (apagar tirava o app da frente no meio da resposta).
+    val vista = LocalView.current
+    DisposableEffect(e.etapa) {
+        vista.keepScreenOn = e.etapa != EtapaIa.PARADA
+        onDispose { vista.keepScreenOn = false }
+    }
+    LaunchedEffect(resumo.totais.prontos, e.etapa) {
         while (true) {
             origem = withContext(Dispatchers.IO) { ia.origem() }
             conferiu = true
@@ -88,9 +98,29 @@ fun TelaPerguntar(vm: AppVM) {
                 origem == null -> PedirModelo(vm, modelo.tamanho)
                 else -> {
                     Text(
-                        "A IA responde só com o que está na biblioteca e mostra de onde tirou. Gasta bastante bateria e pode demorar um pouco.",
+                        "A IA responde só com o que está na biblioteca e mostra de onde tirou. No celular ela é lenta: " +
+                            "a resposta costuma levar de 1 a 3 minutos (procura nas fontes, carrega a IA e escreve). " +
+                            "Você acompanha cada passo aqui. Para achar algo na hora, use a Busca.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                    if (origem is OrigemModelo.Ssd && e.etapa == EtapaIa.PARADA) {
+                        Text(
+                            "Hoje a IA é lida do pen drive a cada vez que abre, e isso leva alguns minutos. Guarde-a " +
+                                "uma vez no celular (${modelo.tamanho}, alguns minutos) e ela passa a abrir em segundos.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                        BotaoContorno("Guardar a IA no celular (${modelo.tamanho})", { ia.prepararCopia() }, Modifier.fillMaxWidth())
+                    }
+                    if (ssd.indice == SituacaoIndiceSsd.COPIANDO) {
+                        val pct = if (ssd.indiceTotal > 0) (100 * ssd.indiceFeito / ssd.indiceTotal).toInt() else 0
+                        Text(
+                            "Espere um pouco: o app ainda está copiando o índice de busca do pen drive para o celular " +
+                                "($pct%). Enquanto isso, a IA fica muito mais lenta. Deixe o app aberto até terminar.",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
                     OutlinedTextField(
                         value = pergunta,
                         onValueChange = { pergunta = it },
@@ -102,18 +132,40 @@ fun TelaPerguntar(vm: AppVM) {
                     if (e.etapa == EtapaIa.PARADA) {
                         BotaoGrande("Perguntar", { ia.perguntar(pergunta) }, habilitado = pergunta.isNotBlank())
                     } else {
+                        // Relógio na tela: a pessoa vê que está andando, e em que passo.
+                        var segundos by remember { mutableStateOf(0L) }
+                        LaunchedEffect(e.inicio) {
+                            while (true) {
+                                segundos = ((System.currentTimeMillis() - e.inicio) / 1000).coerceAtLeast(0)
+                                delay(1000)
+                            }
+                        }
+                        val passo = when (e.etapa) {
+                            EtapaIa.PROCURANDO -> "Passo 1 de 3"
+                            EtapaIa.CARREGANDO -> "Passo 2 de 3"
+                            else -> "Passo 3 de 3"
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
-                            Text(
-                                when (e.etapa) {
-                                    EtapaIa.PROCURANDO -> "Procurando nas fontes…"
-                                    EtapaIa.CARREGANDO -> "Carregando a IA… (pode levar um minuto)"
-                                    else -> "Escrevendo a resposta…"
-                                },
-                                style = MaterialTheme.typography.titleMedium,
-                            )
+                            Column {
+                                Text(
+                                    e.detalhe.ifBlank {
+                                        when (e.etapa) {
+                                            EtapaIa.PROCURANDO -> "Procurando nas fontes…"
+                                            EtapaIa.CARREGANDO -> "Carregando a IA…"
+                                            else -> "Escrevendo a resposta…"
+                                        }
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                                Text(
+                                    "$passo · ${segundos / 60}:${(segundos % 60).toString().padStart(2, '0')}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
-                        if (e.etapa == EtapaIa.ESCREVENDO) BotaoContorno("Parar", { ia.parar() }, Modifier.fillMaxWidth())
+                        BotaoContorno("Parar", { ia.cancelar() }, Modifier.fillMaxWidth())
                     }
                     e.erro?.let { Text(it, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary) }
                     val naoAchou = e.resposta.startsWith(RegrasIa.NAO_ENCONTREI)

@@ -8,7 +8,7 @@ import shutil
 import threading
 import time
 
-from . import config, indice, kiwix, sistema, textos
+from . import config, indice, kiwix, sistema, textos, vetores
 
 log = config.log
 
@@ -67,6 +67,8 @@ def modelos():
                 continue  # não guarda o "não": pode ficar pronto daqui a pouco
             _validos[chave] = True
         nome = os.path.basename(p)
+        if 'embedding' in nome.lower():
+            continue  # modelo da busca por significado (vetores.py): não conversa
         tam = os.path.getsize(p)
         m = re.search(r'(\d+(?:\.\d+)?)[bB]', nome)
         bilhoes = float(m.group(1)) if m else tam / 6e8
@@ -185,6 +187,7 @@ def aquecer():
         log.info('buscas da IA aquecidas')
 
     threading.Thread(target=aquecer_buscas, daemon=True, name='ia-aquecer-buscas').start()
+    vetores.aquecer()
 
     def laco():
         try:
@@ -486,22 +489,24 @@ SISTEMA_RAG = (
 
 
 TAM_TRECHO = 750
+SIM_MINIMA = 0.35   # semelhança mínima (0 a 1) para um trecho da busca por significado ir para a IA
 
 
-def _candidatos_docs(consulta, idioma):
+def _candidatos_docs(consulta, idioma, significado=True):
     try:
-        c = indice.trechos_para_ia(consulta, n=8, idioma=idioma if idioma == 'en' else None, tamanho=TAM_TRECHO)
+        c = indice.trechos_para_ia(consulta, n=8, idioma=idioma if idioma == 'en' else None, tamanho=TAM_TRECHO,
+                                   significado=significado)
     except Exception as e:
         log.warning('trechos docs %s: %s', idioma, e)
         c = []
     return _marcar_posicao(c, consulta)
 
 
-def _candidatos_zim(consulta, idioma):
+def _candidatos_zim(consulta, idioma, significado=True):
     c = []
     if kiwix.disponivel():
         try:
-            c = kiwix.trechos_para_ia(consulta, n=3, idiomas=(idioma,), tamanho=TAM_TRECHO)
+            c = kiwix.trechos_para_ia(consulta, n=3, idiomas=(idioma,), tamanho=TAM_TRECHO, significado=significado)
         except Exception as e:
             log.warning('trechos kiwix %s: %s', idioma, e)
     return _marcar_posicao(c, consulta)
@@ -540,7 +545,7 @@ def _escolher(fontes, pergunta, kw_pt='', kw_en=''):
         base = textos.sem_acento((f['texto'] + ' ' + f['titulo']).lower())
         tit = textos.sem_acento(f['titulo'].lower())
         ts = list(dict.fromkeys(textos.raiz(t) for t in grupos['en' if f.get('idioma') == 'en' else 'pt']))
-        if not ts:
+        if not ts and '_sim' not in f:
             continue
         total = sum(pesos.get(r, 1.0) for r in ts) or 1
         cobertura = sum(pesos.get(r, 1.0) for r in ts if r in base) / total
@@ -551,6 +556,15 @@ def _escolher(fontes, pergunta, kw_pt='', kw_en=''):
         if f.get('idioma') != 'en' and principais:
             falta = 0.4 * sum(1 for r in principais if r not in base) / len(principais)
         manual = 0.15 if f['fonte'] == 'doc' else 0.0   # manuais práticos têm preferência
+        if '_sim' in f:
+            # veio da busca por significado: acha sinônimos e páginas em inglês, que não têm as palavras da
+            # pergunta; então vale a semelhança, e as palavras só desempatam
+            if f['_sim'] < SIM_MINIMA:
+                continue
+            forca = min(1.0, max(0.0, (f['_sim'] - SIM_MINIMA) / 0.25))
+            f['_nota'] = 0.6 + 0.6 * forca + 0.3 * cobertura + 0.25 / (1 + f.get('_pos', 5)) + manual
+            unicos.append(f)
+            continue
         f['_nota'] = cobertura + 0.4 * freq + min(0.3, bonus_tit) + 0.25 / (1 + f.get('_pos', 5)) - falta + manual
         unicos.append(f)
     unicos.sort(key=lambda f: -f['_nota'])
@@ -608,10 +622,13 @@ def perguntar(pergunta):
     if kw_en:
         yield {'tipo': 'consulta_en', 'texto': kw_en}
     yield {'tipo': 'status', 'texto': 'Procurando nas fontes da biblioteca…'}
-    # as buscas (manuais e enciclopédias, PT e EN) rodam ao mesmo tempo
-    buscas = [(pergunta, 'pt')] + ([(kw_pt, 'pt')] if kw_pt else []) + ([(kw_en, 'en')] if kw_en else [])
+    # as buscas (manuais e enciclopédias, PT e EN) rodam ao mesmo tempo. A busca por significado vai só na pergunta
+    # da pessoa; as palavras-chave da IA vão pela busca por palavras (medido em 2 x 30 perguntas: 1º trecho certo
+    # 57% -> 63%, contra usar significado nas três buscas)
+    buscas = [(pergunta, 'pt', True)] + ([(kw_pt, 'pt', False)] if kw_pt else []) + ([(kw_en, 'en', False)] if kw_en else [])
     with concurrent.futures.ThreadPoolExecutor(len(buscas) * 2) as ex:
-        futs = [ex.submit(_candidatos_docs, q, i) for q, i in buscas] + [ex.submit(_candidatos_zim, q, i) for q, i in buscas]
+        futs = ([ex.submit(_candidatos_docs, q, i, s) for q, i, s in buscas]
+                + [ex.submit(_candidatos_zim, q, i, s) for q, i, s in buscas])
         fontes = []
         for f in futs:
             try:

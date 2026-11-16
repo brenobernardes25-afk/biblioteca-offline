@@ -38,6 +38,7 @@ sealed interface Tela {
     data object Downloads : Tela
     data object Ssd : Tela
     data object Mapa : Tela
+    data object MapaBrasil : Tela
     data object Sobre : Tela
     data object Manual : Tela
     data class Pdf(val caminho: String, val titulo: String, val pagina: Int, val doSsd: Boolean = false, val traduzivel: Boolean = false) : Tela

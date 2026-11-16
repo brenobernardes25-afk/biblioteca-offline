@@ -451,7 +451,11 @@ def main():
     if os.path.exists(TROCAS):
         estado['trocados'] = json.load(open(TROCAS, encoding='utf-8'))
     fora = categorias.ler_escolha()
-    if '--escolher' in sys.argv or (fora is None and '--verificar' not in sys.argv):
+    if '--leve' in sys.argv:
+        fora = list(categorias.LEVE_FORA)
+        categorias.gravar_escolha(fora)
+        print('Versão leve (~100 GB). Para baixar mais depois: dois cliques em ESCOLHER_O_QUE_BAIXAR.bat.')
+    elif '--escolher' in sys.argv or (fora is None and '--verificar' not in sys.argv):
         fora = menu(itens)
         categorias.gravar_escolha(fora)
     fora = fora or []

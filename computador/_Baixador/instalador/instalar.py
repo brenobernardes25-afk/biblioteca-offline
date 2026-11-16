@@ -438,8 +438,15 @@ def main():
     print('=' * 72)
     print('  BIBLIOTECA OFFLINE — instalação')
     print('=' * 72)
+    if '--diagnostico' in sys.argv:
+        # Grava a cada 30 s onde o programa está parado (para achar travamentos sem ver a tela da pessoa).
+        import faulthandler
+        diag = open(os.path.join(AQUI, 'diagnostico.txt'), 'w', encoding='utf-8')
+        faulthandler.dump_traceback_later(30, repeat=True, file=diag)
+        print('Modo diagnóstico: anotando em _Baixador\\instalador\\diagnostico.txt', flush=True)
     if os.name == 'nt' and sys.getwindowsversion().major < 10:
         print('Atenção: a biblioteca precisa do Windows 10 ou 11.')
+    print('Lendo a lista de arquivos...', flush=True)
     itens = ler_manifesto()
     if os.path.exists(TROCAS):
         estado['trocados'] = json.load(open(TROCAS, encoding='utf-8'))
@@ -452,7 +459,13 @@ def main():
         print('Deixado de fora (para mudar: dois cliques em ESCOLHER_O_QUE_BAIXAR.bat):')
         for c in fora:
             print('   - %s' % categorias.NOMES[c])
-    faltam = [i for i in itens if i['tipo'] != 'gerado' and categorias.quer(i['rel'], fora) and not pronto(i)]
+    print('Conferindo o que já está no HD (pode levar alguns minutos)...', flush=True)
+    faltam, t0 = [], time.time()
+    for n, i in enumerate(itens, 1):
+        if i['tipo'] != 'gerado' and categorias.quer(i['rel'], fora) and not pronto(i):
+            faltam.append(i)
+        if n % 5000 == 0:
+            print('   … %d de %d conferidos (%d s)' % (n, len(itens), time.time() - t0), flush=True)
     for i in faltam:
         if 'web.archive.org/' in i['url']:
             i['prio'] = PARTE_LENTA

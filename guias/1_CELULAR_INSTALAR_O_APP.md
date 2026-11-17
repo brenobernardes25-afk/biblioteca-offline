@@ -31,7 +31,7 @@ da Play Store.
 
 2. Quando terminar, toque em **Abrir** na barra de aviso.
    Se o aviso sumiu, abra o app **Arquivos** (ou **Meus arquivos**, ou **Gerenciador de arquivos**),
-   entre em **Downloads** e toque em `Biblioteca_de_Bolso_1.0.0.apk`.
+   entre em **Downloads** e toque em `Biblioteca_de_Bolso_1.2.8.apk` (o número pode ser mais novo).
 
 3. O celular vai pedir permissão para instalar. Siga a parte da sua marca, logo abaixo.
 

@@ -40,8 +40,10 @@ Escolha o seu caso:
 2. Clique com o botão direito no SSD › **Propriedades**.
 3. Veja o **Sistema de arquivos**:
    - **exFAT**: tudo certo. Siga para o passo 2.
-   - **NTFS**: o celular não consegue abrir. Para usar no celular, o SSD precisa ser formatado em exFAT.
-     **Formatar apaga tudo**, então antes copie a biblioteca para outro disco. Na dúvida, peça ajuda a alguém.
+   - **NTFS**: muitos celulares não abrem NTFS, mas alguns abrem. **Não formate antes de testar:** siga o passo 2.
+     Se o app abrir a biblioteca, está resolvido. Se o celular não enxergar o SSD ou o app der erro, aí o SSD
+     precisa ser formatado em exFAT. **Formatar apaga tudo**, então antes copie a biblioteca para outro disco.
+     Na dúvida, peça ajuda a alguém.
 
 ### 2. Ligue o SSD no celular (uma vez só)
 

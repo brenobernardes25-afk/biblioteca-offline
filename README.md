@@ -76,7 +76,8 @@ família passar 72 horas sem ajuda em enchente, El Niño, apagão, crise e prime
 Tudo é de código aberto, sem o conteúdo baixado:
 
 - **App do celular:** pasta [`celular/`](celular/), sob a licença GPL-3.0. Lá também está como compilar.
-- **Kit do computador:** pasta [`computador/`](computador/), com a lista dos ~54 mil arquivos da biblioteca.
+- **Kit do computador:** pasta [`computador/`](computador/), com a lista dos ~54 mil arquivos da biblioteca,
+  sob a licença CC BY-NC-SA 4.0 (crédito obrigatório e uso não comercial). Detalhes em [LICENSE.md](LICENSE.md).
 
 **Quer sugerir um livro, manual ou enciclopédia?** Veja o [CONTRIBUINDO.md](CONTRIBUINDO.md).
 
@@ -91,6 +92,9 @@ As bibliotecas usadas também são de código aberto:
 - Python
 
 ## Licenças
+
+O projeto (código, guias e listas) tem licença própria, descrita em [LICENSE.md](LICENSE.md): quem reaproveitar
+precisa dar o crédito a este projeto.
 
 Cada material baixado pertence a quem o publicou e segue a licença da fonte original.
 Alguns, como o Alcorão (Tanzil) e a Torá em português (Sefaria), são **apenas para uso

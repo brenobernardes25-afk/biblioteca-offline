@@ -442,6 +442,63 @@ def menu(itens):
             return fora
 
 
+def limpar_teclas():
+    """Tira do buffer as teclas apertadas sem querer enquanto rodava (senão respondem a pergunta ou o 'pause')."""
+    try:
+        import msvcrt
+        while msvcrt.kbhit():
+            msvcrt.getwch()
+    except Exception:
+        pass
+
+
+def tentar_archive_de_novo(faltam):
+    """No fim de tudo, tenta de novo (devagar, um por vez) os PDFs do web.archive.org que não vieram.
+    Se o site continuar bloqueando, avisa e pergunta se a pessoa quer tentar mais uma vez."""
+    while True:
+        pend = [i for i in faltam if 'web.archive.org/' in i['url'] and not pronto(i)]
+        if not pend:
+            return 0
+        print()
+        escreve('Tentando de novo os %d PDFs do web.archive.org (agora devagar, um de cada vez)...' % len(pend))
+        estado['lento_parado'].clear()
+        seguidas = vieram = 0
+        for n, item in enumerate(pend, 1):
+            try:
+                res = instalar_item(item)
+            except Exception as e:
+                escreve('FALHOU: %s (%s)' % (item['rel'], e), tela=False)
+                res = 'falha'
+            if res in ('ok', 'ja'):
+                vieram += 1
+                seguidas = 0
+                estado['bytes'] += item['tam']
+            elif res == 'falha':
+                seguidas += 1
+                if seguidas >= DESISTE_LENTO:
+                    break
+            if n % 25 == 0:
+                print('   … %d de %d tentados · %d vieram' % (n, len(pend), vieram), flush=True)
+        estado['de_novo'] = estado.get('de_novo', 0) + vieram
+        resto = len(pend) - vieram
+        if not resto:
+            escreve('Os PDFs do web.archive.org vieram todos (%d).' % vieram)
+            return 0
+        print()
+        print('AVISO: o web.archive.org continua bloqueando a sua conexão agora. Faltam %d PDFs' % resto)
+        print('(Ministério da Saúde e livros SciELO). O resto da biblioteca já está pronto.')
+        limpar_teclas()
+        try:
+            r = input('Quer tentar de novo agora? Ele espera 10 minutos antes, às vezes o bloqueio passa. (s/n): ')
+        except EOFError:
+            r = 'n'
+        if not r.strip().lower().startswith('s'):
+            print('Tudo bem. Rode o INSTALAR_BIBLIOTECA.bat outro dia: ele baixa só o que falta.')
+            return resto
+        escreve('Esperando 10 minutos antes de tentar de novo (pode deixar a janela aberta)...')
+        time.sleep(600)
+
+
 def main():
     print('=' * 72)
     print('  BIBLIOTECA OFFLINE — instalação')
@@ -551,7 +608,7 @@ def main():
                         if seguidas >= DESISTE_LENTO and not estado['lento_parado'].is_set():
                             estado['lento_parado'].set()
                             escreve('O web.archive.org não está entregando agora (%d falhas seguidas). Os PDFs de lá '
-                                    'ficam para a próxima rodada; seguindo com o resto.' % seguidas)
+                                    'ficam para o fim (tento de novo depois de baixar o resto).' % seguidas)
             if prio == 1:
                 instalar_programas()
     finally:
@@ -562,9 +619,14 @@ def main():
         rodar_script('baixar_mapa_pc.py', 'Mapa do Brasil para o PC (recorte do mapa-múndi; ~6 GB)')
     if 'religiao' not in fora:
         rodar_script('baixar_religiao.py', 'Textos religiosos (Bíblias, Torá, Alcorão)')
+    arquivo_web = {i['rel'] for i in faltam if 'web.archive.org/' in i['url']}
+    falta_web = tentar_archive_de_novo(faltam)
+    baixados = (estado['feitos'] - len(estado['falhas']) - len(estado['sem_espaco']) - len(estado['pulados'])
+                + estado.get('de_novo', 0))
+    estado['falhas'] = [r for r in estado['falhas'] if r not in arquivo_web]   # esses viram o aviso abaixo
     print()
     escreve('===== instalação: fim =====')
-    print('Baixados nesta rodada: %d arquivos.' % (estado['feitos'] - len(estado['falhas']) - len(estado['sem_espaco'])))
+    print('Baixados nesta rodada: %d arquivos.' % baixados)
     if estado['diferentes']:
         print('%d arquivos tinham mudado no site desde a biblioteca original (versões novas; tudo bem).' % estado['diferentes'])
     if estado['trocados']:
@@ -572,10 +634,10 @@ def main():
     if estado['sem_espaco']:
         print('NÃO couberam %d arquivos (falta espaço). Lista no registro: %s' % (len(estado['sem_espaco']), REGISTRO))
         escreve('sem espaço: ' + ' | '.join(estado['sem_espaco'][:500]), tela=False)
-    if estado['pulados']:
-        print('Ficaram para depois %d PDFs do web.archive.org (servidor que estava bloqueando ou parado). O resto não'
-              % len(estado['pulados']))
-        print('depende deles. Rode a instalação de novo amanhã: ela continua só com o que falta.')
+    if falta_web:
+        print('Ficaram faltando %d PDFs do web.archive.org (o site estava bloqueando a sua conexão). O resto não'
+              % falta_web)
+        print('depende deles. Rode a instalação de novo outro dia: ela baixa só o que falta.')
     if estado['falhas']:
         print('FALHARAM %d arquivos (site fora do ar ou endereço mudou). Rode a instalação de novo mais tarde;' % len(estado['falhas']))
         print('se continuar, os baixadores em _Baixador (ex.: BAIXAR_EMBRAPA.bat) buscam pelo catálogo atual.')
@@ -584,6 +646,7 @@ def main():
             print('   - %s' % r)
     print('\nPRONTO. Para usar: dois cliques em ABRIR_BIBLIOTECA.bat.')
     print('Na primeira vez o app monta o índice de busca (algumas horas; dá para ir usando enquanto isso).')
+    limpar_teclas()
 
 
 if __name__ == '__main__':

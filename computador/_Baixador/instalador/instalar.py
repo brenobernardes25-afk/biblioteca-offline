@@ -35,6 +35,8 @@ PYTHON = sys.executable
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BibliotecaOffline/1.0'
 FOLGA_GB = 5
 PARALELO = 6
+PARALELO_LENTO = 2   # o web.archive.org bloqueia por horas quem pede muito de uma vez
+DESISTE_LENTO = 12   # tantas falhas seguidas no web.archive.org = ele não está entregando agora: deixa para a próxima rodada
 SEM_JANELA = 0x08000000 if os.name == 'nt' else 0
 GRUPOS = {1: 'Programas e IA', 2: 'Saúde, sobrevivência e religião', 3: 'Enciclopédias essenciais, mapas e instaladores',
           4: 'Agricultura, Exército, livros acadêmicos', 5: 'Demais enciclopédias', 6: 'Gutenberg, IAs extras e o resto',
@@ -52,7 +54,7 @@ import baixa_seguro  # noqa: E402  (ativa os certificados e o download sem curl)
 import categorias  # noqa: E402  (o que a pessoa quer baixar)
 GERADOS_GB = {'mapas': 6, 'religiao': 0.1}   # feitos aqui por script, fora do manifesto
 _trava = threading.Lock()
-estado = {'feitos': 0, 'bytes': 0, 'falhas': [], 'sem_espaco': [], 'trocados': {}, 'diferentes': 0,
+estado = {'feitos': 0, 'bytes': 0, 'falhas': [], 'sem_espaco': [], 'pulados': [], 'lento_parado': threading.Event(), 'trocados': {}, 'diferentes': 0,
           'inicio': time.time(), 'total_bytes': 0, 'total_arquivos': 0,
           'baixado': 0,     # bytes que vieram mesmo pela internet nesta rodada (para a velocidade)
           'ativos': {}}     # arquivo .part em andamento -> (tamanho quando começou, tamanho esperado)
@@ -238,6 +240,8 @@ def zim_novo(item):
 def instalar_item(item):
     if pronto(item):
         return 'ja'
+    if estado['lento_parado'].is_set() and 'web.archive.org/' in item['url']:
+        return 'pulado'
     p = caminho(item['rel'])
     falta = item['tam'] - (os.path.getsize(p + '.part') if os.path.exists(p + '.part') else 0)
     if livre() - max(0, falta) < FOLGA_GB * 2**30:
@@ -317,6 +321,8 @@ def mostrar_andamento(parar):
         falta = max(0, estado['total_bytes'] - feito)
         partes = ['   … %d de %d arquivos · %s de %s GB' % (estado['feitos'], estado['total_arquivos'], gb(feito),
                                                            gb(estado['total_bytes']))]
+        if estado['falhas']:
+            partes.append('%d não vieram' % len(estado['falhas']))
         if vel:
             partes.append('%.1f MB/s' % (vel / 2**20))
             if vel > 2e4:
@@ -519,7 +525,8 @@ def main():
             escreve('--- Parte %d de %d: %s (%d arquivos, %s GB) ---' % (prio, max(GRUPOS), GRUPOS.get(prio, ''),
                                                                          len(grupo), gb(sum(i['tam'] for i in grupo))))
             grupo.sort(key=lambda i: i['tam'])   # pequenos primeiro: a biblioteca fica útil mais cedo
-            with concurrent.futures.ThreadPoolExecutor(PARALELO) as ex:
+            seguidas = 0
+            with concurrent.futures.ThreadPoolExecutor(PARALELO_LENTO if prio == PARTE_LENTA else PARALELO) as ex:
                 futuros = {ex.submit(instalar_item, i): i for i in grupo}
                 for fut in concurrent.futures.as_completed(futuros):   # conta conforme cada um termina
                     item = futuros[fut]
@@ -529,11 +536,20 @@ def main():
                         escreve('FALHOU: %s (%s)' % (item['rel'], e), tela=False)
                         res = 'falha'
                     estado['feitos'] += 1
-                    estado['bytes'] += item['tam']
+                    if res in ('ok', 'ja'):
+                        estado['bytes'] += item['tam']   # só conta o que chegou de verdade
                     if res == 'falha':
                         estado['falhas'].append(item['rel'])
                     elif res == 'espaco':
                         estado['sem_espaco'].append(item['rel'])
+                    elif res == 'pulado':
+                        estado['pulados'].append(item['rel'])
+                    if prio == PARTE_LENTA and res in ('ok', 'falha'):
+                        seguidas = seguidas + 1 if res == 'falha' else 0
+                        if seguidas >= DESISTE_LENTO and not estado['lento_parado'].is_set():
+                            estado['lento_parado'].set()
+                            escreve('O web.archive.org não está entregando agora (%d falhas seguidas). Os PDFs de lá '
+                                    'ficam para a próxima rodada; seguindo com o resto.' % seguidas)
             if prio == 1:
                 instalar_programas()
     finally:
@@ -554,6 +570,10 @@ def main():
     if estado['sem_espaco']:
         print('NÃO couberam %d arquivos (falta espaço). Lista no registro: %s' % (len(estado['sem_espaco']), REGISTRO))
         escreve('sem espaço: ' + ' | '.join(estado['sem_espaco'][:500]), tela=False)
+    if estado['pulados']:
+        print('Ficaram para depois %d PDFs do web.archive.org (servidor que estava bloqueando ou parado). O resto não'
+              % len(estado['pulados']))
+        print('depende deles. Rode a instalação de novo amanhã: ela continua só com o que falta.')
     if estado['falhas']:
         print('FALHARAM %d arquivos (site fora do ar ou endereço mudou). Rode a instalação de novo mais tarde;' % len(estado['falhas']))
         print('se continuar, os baixadores em _Baixador (ex.: BAIXAR_EMBRAPA.bat) buscam pelo catálogo atual.')

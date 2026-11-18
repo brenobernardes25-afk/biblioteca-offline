@@ -143,7 +143,7 @@ def zim_inteiro(p):
         return False
 
 
-def baixar_url(url, destino, tam, tentativas=5):
+def baixar_url(url, destino, tam, tentativas=5, espera=180):
     """Baixa para destino.part (retomável para arquivos grandes) e só no fim troca o nome.
     Arquivo grande que não chegou inteiro fica como .part (a próxima rodada continua dele) e conta como falha."""
     parcial = destino + '.part'
@@ -171,7 +171,7 @@ def baixar_url(url, destino, tam, tentativas=5):
             for t in range(1, tentativas):
                 try:
                     req = urllib.request.Request(url, headers={'User-Agent': UA})
-                    with urllib.request.urlopen(req, timeout=180) as r, open(parcial, 'wb') as f:
+                    with urllib.request.urlopen(req, timeout=espera) as r, open(parcial, 'wb') as f:
                         shutil.copyfileobj(r, f, 1 << 16)
                     break
                 except urllib.error.HTTPError as e:
@@ -208,6 +208,8 @@ def espelhos(url):
 
 def baixar(url, destino, tam):
     """Baixa do endereço da lista; se falhar e for do Kiwix, tenta os outros espelhos antes de desistir."""
+    if 'web.archive.org/' in url:   # quando ele bloqueia, a conexão fica pendurada: falha logo e deixa o resto andar
+        return baixar_url(url, destino, tam, tentativas=3, espera=60)
     try:
         return baixar_url(url, destino, tam)
     except Exception as e:

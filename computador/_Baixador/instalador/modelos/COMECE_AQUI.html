@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comece aqui · Biblioteca Offline</title>
+<style>
+@page { size: A4; margin: 11mm 13mm; }
+* { box-sizing: border-box; }
+body { font-family: "Segoe UI", Arial, sans-serif; color: #1c2321; background: #fff; margin: 0 auto; max-width: 900px;
+  padding: 16px; font-size: 15px; line-height: 1.4; }
+h1 { font-size: 28px; margin: 0 0 4px; color: #14532d; }
+.sub { margin: 0 0 14px; color: #3f4a46; }
+.cols { display: flex; gap: 16px; flex-wrap: wrap; }
+.cx { flex: 1 1 300px; border: 2px solid #14532d; border-radius: 10px; padding: 10px 14px; }
+h2 { font-size: 20px; margin: 0 0 6px; color: #14532d; }
+h3 { font-size: 17px; margin: 18px 0 6px; color: #14532d; }
+ol, ul { margin: 0; padding-left: 22px; } li { margin-bottom: 4px; }
+.arq { font-weight: 700; background: #e7f2ea; padding: 0 5px; border-radius: 4px; white-space: nowrap; }
+.nota { font-size: 14px; color: #3f4a46; margin: 8px 0 0; }
+table { border-collapse: collapse; width: 100%; }
+td, th { border: 1px solid #b9c4be; padding: 5px 8px; text-align: left; vertical-align: top; }
+th { background: #e7f2ea; }
+a { color: #14532d; }
+.fim { margin-top: 18px; color: #3f4a46; border-top: 1px solid #b9c4be; padding-top: 10px; }
+@media (prefers-color-scheme: dark) {
+  body { background: #121410; color: #e8e4d8; } .sub, .nota, .fim { color: #a9ae9f; }
+  h1, h2, h3, a { color: #9fb877; } .cx { border-color: #9fb877; }
+  .arq, th { background: #26301f; } td, th { border-color: #3a3f34; }
+}
+</style></head><body>
+<h1>Biblioteca Offline</h1>
+<p class="sub">Uma biblioteca inteira que funciona <b>sem internet</b>: Wikipédia em português, saúde, primeiros socorros, água, plantio, criação de animais, consertos, mapas do Brasil e uma IA que responde perguntas citando os livros.</p>
+<div class="cols">
+<div class="cx"><h2>No computador</h2>
+<ol>
+<li>Ligue o HD/SSD da biblioteca (ou abra a pasta onde ela foi instalada).</li>
+<li>Dê dois cliques em <span class="arq">ABRIR BIBLIOTECA</span> (o ícone do livro). Se ele não estiver lá, use <span class="arq">ABRIR_BIBLIOTECA.bat</span>.</li>
+<li>A biblioteca abre no navegador. Digite o que procura.</li>
+</ol>
+<p class="nota">Para sair, feche a janela preta que abriu junto. Precisa de Windows 10 ou 11. Na primeira vez o app monta o índice de busca (algumas horas); dá para ir usando enquanto isso.</p></div>
+<div class="cx"><h2>No celular</h2>
+<ol>
+<li>Instale o app <b>Biblioteca de Bolso</b>: <a href="https://github.com/brenobernardes25-afk/biblioteca-offline/blob/main/guias/1_CELULAR_INSTALAR_O_APP.md">como instalar</a>.</li>
+<li>Ligue o HD/SSD no celular pela entrada USB-C e siga o guia <a href="https://github.com/brenobernardes25-afk/biblioteca-offline/blob/main/guias/4_CELULAR_COMPLETO_SSD.md">Celular com SSD</a> (caso A).</li>
+</ol>
+<p class="nota">O disco precisa estar em exFAT para a maioria dos celulares. Abra a biblioteca uma vez no computador antes: o índice de busca que ele monta é o que o celular usa.</p></div>
+</div>
+<h3>O que funciona onde</h3>
+<table>
+<tr><th>Aparelho</th><th>Funciona?</th><th>Observação</th></tr>
+<tr><td>Computador com Windows 10 ou 11</td><td>Sim</td><td>Tudo, inclusive a IA</td></tr>
+<tr><td>Celular Android com USB-C</td><td>Sim</td><td>Busca, enciclopédias, manuais, mapa e IA (com 8 GB de memória)</td></tr>
+<tr><td>iPhone e iPad</td><td>Não</td><td>O sistema da Apple não deixa</td></tr>
+<tr><td>Mac e Linux</td><td>Só os arquivos</td><td>Os PDFs abrem direto da pasta 5_Acervo; veja o CATALOGO.html</td></tr>
+</table>
+<h3>Arquivos úteis nesta pasta</h3>
+<ul>
+<li><span class="arq">CATALOGO.html</span>: a lista de tudo o que foi baixado, com busca. Abre sem o app e abre cada PDF com um clique.</li>
+<li><span class="arq">CONFERIR_BIBLIOTECA.bat</span>: confere se está tudo inteiro e oferece baixar de novo o que estiver estragado.</li>
+<li><span class="arq">INSTALAR_BIBLIOTECA.bat</span>: continua a instalação ou baixa o que faltou. <span class="arq">ESCOLHER_O_QUE_BAIXAR.bat</span> muda as categorias.</li>
+<li><span class="arq">COPIAR_RELATORIO.bat</span>: se algo der errado, monta um texto com a situação, já copiado, para pedir ajuda.</li>
+<li>Para atualizar a biblioteca: no app, <b>Situação › Atualizar pela internet</b>.</li>
+</ul>
+<h3>Cuidados</h3>
+<ul>
+<li>Não apague nem mude de lugar as pastas da biblioteca: o app depende delas.</li>
+<li>Use "Ejetar" antes de tirar o HD/SSD do computador.</li>
+<li>A IA resume e pode errar: confira no livro citado, principalmente doses de remédio.</li>
+<li>Não substitui atendimento médico. Em emergência, procure ajuda sempre que puder.</li>
+</ul>
+<p class="fim">Criado por Breno Paiva · Instagram <a href="https://instagram.com/breno.paiva40">@breno.paiva40</a> · <a href="https://github.com/brenobernardes25-afk/biblioteca-offline">github.com/brenobernardes25-afk/biblioteca-offline</a></p>
+</body></html>

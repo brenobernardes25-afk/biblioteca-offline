@@ -1,0 +1,44 @@
+// Atalho "ABRIR BIBLIOTECA" (Biblioteca Offline). O instalador compila este arquivo NO PRÓPRIO COMPUTADOR, com o
+// compilador C# que já vem no Windows (.NET Framework 4), para a pasta da biblioteca ganhar um atalho com ícone.
+// Ele só abre o Python que vem no kit com o app, na mesma pasta onde este atalho está.
+// Não instala nada e não usa internet.
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Windows.Forms;
+
+[assembly: AssemblyTitle("Biblioteca Offline - abrir")]
+[assembly: AssemblyDescription("Biblioteca Offline - abrir")]
+[assembly: AssemblyProduct("Biblioteca Offline")]
+[assembly: AssemblyCompany("Breno Paiva")]
+[assembly: AssemblyCopyright("Breno Paiva - @breno.paiva40")]
+[assembly: AssemblyVersion("2.0.0.0")]
+[assembly: AssemblyFileVersion("2.0.0.0")]
+
+static class Atalho
+{
+    [STAThread]
+    static int Main(string[] args)
+    {
+        string raiz = AppDomain.CurrentDomain.BaseDirectory;
+        string python = Path.Combine(raiz, @"Programas\Python\python.exe");
+        string programa = Path.Combine(raiz, @"App\main.py");
+        if (!File.Exists(python) || !File.Exists(programa))
+        {
+            MessageBox.Show(
+                "Não encontrei os arquivos da biblioteca.\n\nAbra este atalho de dentro da pasta da biblioteca, sem copiar para outro lugar.",
+                "Biblioteca Offline", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return 1;
+        }
+        string certificados = Path.Combine(raiz, @"_Baixador\certificados\cacert.pem");
+        if (File.Exists(certificados))   // igual ao ABRIR_BIBLIOTECA.bat (o Python abre herdando isto)
+            Environment.SetEnvironmentVariable("SSL_CERT_FILE", certificados);
+        string extra = string.Join(" ", Array.ConvertAll(args, a => "\"" + a + "\""));
+        var psi = new ProcessStartInfo(python, "-X utf8 \"" + programa + "\" " + extra);
+        psi.WorkingDirectory = raiz;
+        psi.UseShellExecute = true;
+        Process.Start(psi);
+        return 0;
+    }
+}

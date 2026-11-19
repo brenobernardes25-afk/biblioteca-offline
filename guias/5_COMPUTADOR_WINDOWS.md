@@ -68,6 +68,10 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
    **Esse índice é o que o celular usa para buscar dentro dos manuais**, por isso abra a biblioteca uma vez antes
    de levar o SSD para o celular.
 
+**A lista de tudo o que foi baixado** fica em **`CATALOGO.html`**, na pasta da biblioteca: abre em qualquer
+navegador, mesmo sem o app, tem busca (sem precisar de acento) e abre cada PDF com um clique. Também há
+`CATALOGO.csv`, para planilha.
+
 **Mudou de ideia sobre o que baixar?** Dê dois cliques em **`ESCOLHER_O_QUE_BAIXAR.bat`**. Nada do que já foi
 baixado é apagado. A atualização pela internet também respeita a sua escolha.
 
@@ -115,6 +119,10 @@ descompacte na raiz do HD substituindo os arquivos e rode o `INSTALAR_BIBLIOTECA
 - **Pedir ajuda:** mande uma foto da janela inteira, ou o final do registro detalhado (abaixo).
 - **Para ver o que falta sem baixar nada:** abra um Prompt de Comando na pasta e digite
   `INSTALAR_BIBLIOTECA.bat --verificar`.
+- **Desconfia de algum arquivo estragado?** Dê dois cliques em **`CONFERIR_BIBLIOTECA.bat`**. Ele confere o que
+  já foi baixado (arquivo sumido, PDF cortado, ZIP quebrado e a soma de verificação de cada enciclopédia) e
+  oferece apagar o que estiver com problema, para o instalador baixar de novo. A soma lê cada enciclopédia
+  inteira e pode levar horas; para uma conferência rápida, sem essa parte: `CONFERIR_BIBLIOTECA.bat --rapido`.
 - **Registro detalhado:** `_Baixador\instalador\instalacao_registro.txt`.
 - **Depois de instalada,** a biblioteca se atualiza pelo próprio app: **Situação › Atualizar pela internet**.
 

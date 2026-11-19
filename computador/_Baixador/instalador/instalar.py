@@ -8,6 +8,7 @@ religiosos). Retomável: se parar (internet, energia, fechou a janela), rode de 
 Uso:  INSTALAR_BIBLIOTECA.bat              (instala / continua)
       INSTALAR_BIBLIOTECA.bat --verificar  (só mostra o que falta, não baixa nada)
       INSTALAR_BIBLIOTECA.bat --escolher   (muda o que baixar: as categorias)
+      CONFERIR_BIBLIOTECA.bat              (= --auditar: acha arquivo estragado e oferece baixar de novo)
 """
 import collections
 import concurrent.futures
@@ -51,6 +52,7 @@ PROGRAMAS = [  # zip em 6_Instaladores -> pasta em Programas
 sys.path.insert(0, BAIXADOR)
 sys.path.insert(0, AQUI)
 import baixa_seguro  # noqa: E402  (ativa os certificados e o download sem curl)
+from baixa_seguro import marcar_ok, ocultar  # noqa: E402
 import categorias  # noqa: E402  (o que a pessoa quer baixar)
 GERADOS_GB = {'mapas': 6, 'religiao': 0.1}   # feitos aqui por script, fora do manifesto
 _trava = threading.Lock()
@@ -153,8 +155,7 @@ def baixar_url(url, destino, tam, tentativas=5, espera=180):
     with _trava:
         estado['ativos'][parcial] = (inicial, tam)
     try:
-        if grande:
-            import baixa_seguro   # usa o curl.exe se existir; senão baixa pelo Python (retomável)
+        if grande:   # baixa_seguro: usa o curl.exe se existir; senão baixa pelo Python (retomável)
             rc = 1
             for t in range(1, tentativas + 1):
                 rc = baixa_seguro.baixar(url, parcial, UA)
@@ -184,6 +185,12 @@ def baixar_url(url, destino, tam, tentativas=5, espera=180):
             raise RuntimeError('não baixou')
         if destino.endswith('.zim') and not zim_inteiro(parcial):
             raise RuntimeError('veio incompleto (%s GB)' % gb(tamanho(parcial)))
+        if destino.endswith('.zim'):
+            if tamanho(parcial) > 2**30:
+                escreve('Conferindo a enciclopédia %s (%s GB)...' % (os.path.basename(destino), gb(tamanho(parcial))))
+            if not baixa_seguro.zim_md5_certo(parcial):
+                os.remove(parcial)   # chegou inteiro mas estragado no meio: só baixando de novo
+                raise RuntimeError('veio estragado (soma de verificação errada)')
         os.replace(parcial, destino)
     finally:
         with _trava:
@@ -277,13 +284,123 @@ def instalar_item(item):
         os.remove(p)
         escreve('FALHOU (o site devolveu outra coisa): %s' % rel, tela=False)
         return 'falha'
+    if pdf_cortado(p, tam):
+        os.remove(p)
+        escreve('FALHOU (o PDF veio cortado): %s' % rel, tela=False)
+        return 'falha'
     if tam and os.path.getsize(p) != tam:
         estado['diferentes'] += 1   # o arquivo mudou no site desde a biblioteca original; vale igual
-    with open(p + '.ok', 'w', encoding='utf-8') as f:
-        f.write(url + '\n')
+    marcar_ok(p, url + '\n')
     if os.path.getsize(p) > 200 * 2**20:
         escreve('OK: %s (%s GB)' % (os.path.basename(rel), gb(os.path.getsize(p))))
     return 'ok'
+
+
+def ocultar_marcas():
+    """Bibliotecas instaladas antes de 19/11/2026 têm as marcas .ok à mostra no Explorador (52 mil arquivos
+    pequenos entre os livros). Esconde todas uma vez; as novas já nascem ocultas (baixa_seguro.marcar_ok)."""
+    feito = os.path.join(AQUI, 'instalacao_ok_ocultos')
+    if os.path.exists(feito):
+        return
+    print('Escondendo as marcas .ok antigas (uma vez só)...', flush=True)
+    n = 0
+    pendentes = [os.path.join(RAIZ, p) for p in ('1_Enciclopedia', '2_Mapas', '4_IA', '5_Acervo', '6_Instaladores', 'Programas')]
+    while pendentes:
+        try:
+            entradas = list(os.scandir(pendentes.pop()))
+        except OSError:
+            continue
+        for e in entradas:   # a listagem da pasta já diz se está oculto: só mexe no que precisa
+            if e.is_dir(follow_symlinks=False):
+                pendentes.append(e.path)
+            elif e.name.endswith('.ok') and not getattr(e.stat(), 'st_file_attributes', 2) & 2:
+                ocultar(e.path)
+                n += 1
+    open(feito, 'w').write('%d marcas .ok ocultadas em %s\n' % (n, time.strftime('%d/%m/%Y %H:%M')))
+    if n:
+        escreve('As %d marcas ".ok" (controle do instalador) agora ficam ocultas no Explorador.' % n, tela=False)
+
+
+def auditar(itens, fora):
+    """CONFERIR_BIBLIOTECA.bat: confere o que já foi baixado (arquivo sumido, tipo errado, PDF cortado, ZIP
+    quebrado e a soma de verificação de cada enciclopédia) e oferece apagar o que estiver estragado, para o
+    instalador baixar de novo. --rapido pula a soma das enciclopédias (a parte demorada)."""
+    rapido = '--rapido' in sys.argv
+    print('Conferindo a biblioteca em %s' % RAIZ)
+    if not rapido:
+        print('A soma de verificação das enciclopédias lê cada uma inteira: num HD pode levar horas.')
+        print('Para uma conferência rápida (sem essa parte): CONFERIR_BIBLIOTECA.bat --rapido')
+    print(flush=True)
+    problemas, zims, conferidos, t0 = [], [], 0, time.time()
+    for n, i in enumerate(itens, 1):
+        if n % 5000 == 0:
+            print('   … %d de %d conferidos (%d s)' % (n, len(itens), time.time() - t0), flush=True)
+        if i['tipo'] == 'gerado' or not categorias.quer(i['rel'], fora):
+            continue
+        rel = estado['trocados'].get(i['rel']) or i['rel']
+        p = caminho(rel)
+        tem_ok = os.path.exists(p + '.ok')
+        if not os.path.isfile(p):
+            if tem_ok:
+                problemas.append((rel, 'sumiu (estava marcado como baixado)'))
+            continue
+        if not tem_ok:
+            continue   # pela metade: o instalador continua dele
+        conferidos += 1
+        ext = os.path.splitext(rel)[1].lower()
+        if not conteudo_certo(p, rel):
+            problemas.append((rel, 'não é o tipo de arquivo esperado (página de erro?)'))
+        elif pdf_cortado(p, i['tam'] if rel == i['rel'] else 0):
+            problemas.append((rel, 'PDF cortado (menor que o original e sem o final)'))
+        elif ext == '.zim':
+            zims.append(rel)
+        elif ext in ('.zip', '.epub', '.apk'):
+            try:
+                zipfile.ZipFile(p).close()   # lê o índice do fim do arquivo: pega zip cortado
+            except (zipfile.BadZipFile, OSError):
+                problemas.append((rel, 'arquivo compactado quebrado'))
+    for n, rel in enumerate(sorted(zims, key=lambda r: tamanho(caminho(r))), 1):
+        p = caminho(rel)
+        if not zim_inteiro(p):
+            problemas.append((rel, 'enciclopédia incompleta'))
+            continue
+        if rapido:
+            continue
+        print('   Enciclopédia %d de %d: %s (%s GB)' % (n, len(zims), os.path.basename(rel), gb(tamanho(p))), flush=True)
+        passo = {'ultimo': 0}
+
+        def andamento(lidos, total):
+            if lidos - passo['ultimo'] >= 10 * 2**30:
+                passo['ultimo'] = lidos
+                print('      … %s de %s GB' % (gb(lidos), gb(total)), flush=True)
+        if not baixa_seguro.zim_md5_certo(p, andamento):
+            problemas.append((rel, 'enciclopédia estragada (soma de verificação errada)'))
+    print()
+    escreve('Conferência: %d arquivos conferidos (%d enciclopédias%s), %d com problema.'
+            % (conferidos, len(zims), ' sem a soma de verificação' if rapido else '', len(problemas)))
+    if not problemas:
+        print('Tudo certo.')
+        return
+    for rel, motivo in problemas:
+        escreve('PROBLEMA: %s: %s' % (rel, motivo), tela=False)
+    for rel, motivo in problemas[:30]:
+        print('   - %s: %s' % (rel, motivo))
+    if len(problemas) > 30:
+        print('   … e mais %d (lista completa em %s)' % (len(problemas) - 30, REGISTRO))
+    limpar_teclas()
+    r = perguntar('\nApagar %s para o instalador baixar de novo? (s/n) '
+                  % ('esse arquivo' if len(problemas) == 1 else 'esses %d arquivos' % len(problemas)))
+    if not r.lower().startswith('s'):
+        print('Nada foi apagado.')
+        return
+    for rel, _ in problemas:
+        for f in (caminho(rel), caminho(rel) + '.ok'):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+    escreve('Apagado(s) %d arquivo(s) com problema.' % len(problemas))
+    print('Agora dê dois cliques em INSTALAR_BIBLIOTECA.bat: ele baixa de novo só o que foi apagado.')
 
 
 def foto_andamento():
@@ -520,10 +637,12 @@ def main():
         fora = list(categorias.LEVE_FORA)
         categorias.gravar_escolha(fora)
         print('Versão leve (~100 GB). Para baixar mais depois: dois cliques em ESCOLHER_O_QUE_BAIXAR.bat.')
-    elif '--escolher' in sys.argv or (fora is None and '--verificar' not in sys.argv):
+    elif '--escolher' in sys.argv or (fora is None and '--verificar' not in sys.argv and '--auditar' not in sys.argv):
         fora = menu(itens)
         categorias.gravar_escolha(fora)
     fora = fora or []
+    if '--auditar' in sys.argv:
+        return auditar(itens, fora)
     if fora:
         print('Deixado de fora (para mudar: dois cliques em ESCOLHER_O_QUE_BAIXAR.bat):')
         for c in fora:
@@ -558,6 +677,7 @@ def main():
         for k, (n, t) in sorted(por.items()):
             print('   falta %-45s %6d arquivos  %8s GB' % (k, n, gb(t)))
         return
+    ocultar_marcas()
     if livre() < total + FOLGA_GB * 2**30:
         print('\nO espaço livre NÃO dá para tudo. Vou instalar por ordem de importância (o essencial primeiro)')
         print('e pular o que não couber. Para a biblioteca completa use um HD/SSD de 1 TB vazio.\n')
@@ -644,6 +764,12 @@ def main():
         escreve('falhas: ' + ' | '.join(estado['falhas'][:2000]), tela=False)
         for r in estado['falhas'][:15]:
             print('   - %s' % r)
+    try:
+        import gerar_catalogo
+        gerar_catalogo.gerar(RAIZ)
+        print('Lista de tudo o que está na biblioteca: CATALOGO.html (abre em qualquer navegador, sem o app).')
+    except Exception as e:
+        escreve('Não consegui gerar o CATALOGO.html (%s)' % e, tela=False)
     print('\nPRONTO. Para usar: dois cliques em ABRIR_BIBLIOTECA.bat.')
     print('Na primeira vez o app monta o índice de busca (algumas horas; dá para ir usando enquanto isso).')
     limpar_teclas()

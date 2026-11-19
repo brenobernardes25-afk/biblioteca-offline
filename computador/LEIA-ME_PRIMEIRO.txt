@@ -34,6 +34,11 @@ COMO INSTALAR (só seguir)
 
   Para ver o que ainda falta sem baixar nada: INSTALAR_BIBLIOTECA.bat --verificar
   Mudou de ideia sobre o que baixar? Dois cliques em ESCOLHER_O_QUE_BAIXAR.bat. Nada já baixado é apagado.
+  Lista de tudo o que foi baixado: CATALOGO.html (abre em qualquer navegador, mesmo sem o app; tem busca
+  e abre cada PDF com um clique). O instalador refaz a lista no fim de cada rodada.
+  Desconfia de algum arquivo estragado? Dois cliques em CONFERIR_BIBLIOTECA.bat: ele confere tudo
+  (inclusive cada enciclopédia por inteiro, o que pode levar horas) e oferece baixar de novo o que
+  estiver com problema. Rápido, sem as enciclopédias por inteiro: CONFERIR_BIBLIOTECA.bat --rapido
   (abra um Prompt de Comando na pasta e digite isso).
 
 ORDEM DO QUE É BAIXADO (o mais importante primeiro)

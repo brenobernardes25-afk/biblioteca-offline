@@ -22,6 +22,9 @@ import time
 import urllib.request
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
+if AQUI not in sys.path:
+    sys.path.insert(0, AQUI)   # o Python roda com -I: acha o baixa_seguro.py
+from baixa_seguro import marcar_ok  # noqa: E402  (marca .ok oculta)
 RAIZ = os.path.dirname(AQUI)
 ZIMS = os.path.join(RAIZ, '1_Enciclopedia')
 ACERVO = os.path.join(RAIZ, '5_Acervo')
@@ -140,8 +143,13 @@ def baixar_zim(n):
             gravar_estado(progresso=round(min(1.0, feito / max(1, n['bytes'])), 3))
             time.sleep(3)
         if bc.zim_completo(destino, n['bytes']):
-            with open(destino + '.ok', 'w', encoding='utf-8') as f:
-                f.write(n['url'] + '\n')
+            escreve('Conferindo a soma de verificação de %s...' % n['novo'])
+            if not baixa_seguro.zim_md5_certo(destino):
+                # chegou inteiro mas estragado no meio: apaga e baixa de novo (o antigo continua no lugar)
+                escreve('Veio estragado (soma de verificação errada); baixando de novo: %s' % n['novo'])
+                os.remove(destino)
+                continue
+            marcar_ok(destino, n['url'] + '\n')
             return True
         escreve('Download interrompido (tentativa %d): %s' % (t, n['novo']))
         time.sleep(20)

@@ -20,6 +20,9 @@ import urllib.request
 import zipfile
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
+if AQUI not in sys.path:
+    sys.path.insert(0, AQUI)   # o Python roda com -I: acha o baixa_seguro.py
+from baixa_seguro import marcar_ok  # noqa: E402  (marca .ok oculta)
 RAIZ = os.path.dirname(AQUI)
 LOG = os.path.join(AQUI, 'registro.txt')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BibliotecaOffline/1.0'
@@ -61,8 +64,7 @@ def baixar(url, destino, assinatura=None):
                 os.remove(parcial)
                 return 'invalido'
             os.replace(parcial, destino)
-            with open(destino + '.ok', 'w', encoding='utf-8') as f:
-                f.write(url + '\n')
+            marcar_ok(destino, url + '\n')
             return 'ok'
         except urllib.error.HTTPError as e:
             if e.code in (403, 404, 410):

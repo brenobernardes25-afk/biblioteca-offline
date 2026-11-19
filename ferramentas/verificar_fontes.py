@@ -11,7 +11,7 @@ Não baixa nada: só pergunta ao servidor se o arquivo existe (HEAD) e, quando o
 ainda é o da lista. Servidores com muitos arquivos são testados por amostra, que roda a cada semana, de modo que
 em algumas semanas todos os arquivos passam pelo teste sem sobrecarregar ninguém.
 
-Roda à mão (e pode rodar toda semana no GitHub com um workflow em .github/workflows/):
+Roda toda semana no GitHub (.github/workflows/verificar-fontes.yml) e também à mão:
 
     python ferramentas/verificar_fontes.py                 (amostra da semana)
     python ferramentas/verificar_fontes.py --limite 20     (teste rápido: até 20 por servidor)

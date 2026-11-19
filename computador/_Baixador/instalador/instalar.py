@@ -376,7 +376,7 @@ def auditar(itens, fora):
         if not baixa_seguro.zim_md5_certo(p, andamento):
             problemas.append((rel, 'enciclopédia estragada (soma de verificação errada)'))
     print()
-    escreve('Conferência: %d arquivos conferidos (%d enciclopédias%s), %d com problema.'
+    escreve('Conferência: %d arquivo(s) conferido(s) (%d enciclopédia(s)%s), %d com problema.'
             % (conferidos, len(zims), ' sem a soma de verificação' if rapido else '', len(problemas)))
     if not problemas:
         print('Tudo certo.')

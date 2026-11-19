@@ -26,10 +26,14 @@ COMO INSTALAR (só seguir)
      - para baixar tudo (recomendado), só tecle ENTER;
      - para deixar algo de fora, digite os números e tecle ENTER. Exemplo: 10 = literatura em inglês,
        3 = Survivor Library (205 GB). O essencial (saúde, sobrevivência, IA) sempre vem.
+     Antes de baixar ele faz um TESTE rápido: formato do disco, espaço, velocidade de gravação e
+     internet, e avisa se achar problema (por exemplo, disco em FAT32, que não aceita arquivo grande).
      Depois deixe a janela aberta.
-     Ela mostra o andamento a cada 30 segundos. Se fechar, faltar luz ou cair a internet,
-     é só dar dois cliques de novo: ele continua de onde parou (nada é baixado duas vezes).
-  4. Quando aparecer "PRONTO", dê dois cliques em ABRIR_BIBLIOTECA.bat.
+     Ela mostra o andamento a cada 30 segundos. Enquanto a janela estiver aberta o computador não
+     entra em suspensão sozinho (não feche a tampa do notebook). Se fechar, faltar luz ou cair a
+     internet, é só dar dois cliques de novo: ele continua de onde parou (nada é baixado duas vezes).
+  4. Quando aparecer "PRONTO", dê dois cliques em ABRIR BIBLIOTECA (o atalho com o ícone do livro,
+     criado no fim da instalação) ou em ABRIR_BIBLIOTECA.bat. O guia rápido de uso é o COMECE_AQUI.html.
      Na primeira vez o app monta o índice de busca (algumas horas); dá para ir usando enquanto isso.
 
   Para ver o que ainda falta sem baixar nada: INSTALAR_BIBLIOTECA.bat --verificar
@@ -47,10 +51,16 @@ ORDEM DO QUE É BAIXADO (o mais importante primeiro)
   3. Wikipédia em português,      6. Gutenberg (literatura) e IAs extras
      enciclopédias essenciais,
      mapas e instaladores
+  Cada arquivo baixado é conferido (tamanho, SHA-256 e, nas enciclopédias, a soma de verificação
+  delas); se vier estragado, ele baixa de novo. Quando o site original falha, ele tenta o endereço
+  reserva (cópias guardadas no GitHub do projeto, ou o site original quando a cópia é que falha).
   No fim ele ainda gera o mapa do Brasil para o PC e os textos religiosos.
   O conteúdo detalhado está em CONTEUDO.txt.
 
 SE ALGO FALHAR
+  - PARA PEDIR AJUDA: dê dois cliques em COPIAR_RELATORIO.bat. Ele monta um texto com a situação da
+    instalação (o que falta, o que falhou e por quê) e já deixa copiado: é só colar na conversa.
+    O texto não leva seu nome nem dados pessoais.
   - Enciclopédias e IA falham na hora com "[WinError 2]"? Era falta do curl.exe no Windows; esta versão
     do kit já baixa sem ele. Se usar um kit antigo, atualize para este.
   - Aparece "Sem internet" com a internet funcionando? Era o Windows sem certificados de segurança

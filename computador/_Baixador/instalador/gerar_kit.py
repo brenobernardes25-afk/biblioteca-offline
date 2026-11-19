@@ -21,11 +21,17 @@ RAIZ = os.path.dirname(BAIXADOR)
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BibliotecaOffline/1.0'
 
 FORA_DA_RAIZ = {'$RECYCLE.BIN', 'System Volume Information', '.claude', 'Android', '_PARA_APAGAR', '_Publicar_GitHub',
-                'Install Security for Mac.zip', 'Install Security for Windows.exe'}   # não são da biblioteca
+                'Install Security for Mac.zip', 'Install Security for Windows.exe',
+                'RELATORIO_PARA_AJUDA.txt'}                                           # não são da biblioteca
 CODIGO = ['App', '_Baixador', 'Programas/Python']                          # vai inteiro no kit
 ARQUIVOS_RAIZ = ['ABRIR_BIBLIOTECA.bat', 'COMO_ATUALIZAR_E_MELHORAR.txt', 'ESPECIFICACAO_APP.md']
 NAO_LEVAR = ('App/dados', '__pycache__', '_Baixador/registro.txt', '_Baixador/atualizacao_estado.json',
-             '_Baixador/reserva_downloads.txt', '_Baixador/instalador/instalacao_', '_Baixador/instalador/manifesto')
+             '_Baixador/reserva_downloads.txt', '_Baixador/instalador/instalacao_', '_Baixador/instalador/manifesto',
+             '_Baixador/instalador/sha256_cache')
+# SHA-256 já calculado de cada arquivo (sha \t tamanho \t caminho): calcular os 900 GB leva horas, então guarda.
+CACHE_SHA = os.path.join(AQUI, 'sha256_cache.tsv')
+# Endereços de "última versão": o arquivo muda no site, então a lista não leva o SHA-256 deles.
+SEM_SHA = ('download.mozilla.org/', 'product=firefox-latest')
 GERADOS = ('2_Mapas/brasil.pmtiles', '2_Mapas/lugares_br.tsv', '5_Acervo/Religiao/')     # refeitos por script
 EXTRAS = [  # o que não veio de um download direto, mas o instalador precisa baixar
     ('6_Instaladores/llama-b11889-bin-win-cpu-x64.zip',
@@ -102,6 +108,42 @@ def mais_novo_por_livro(zims):
     return list(por_nome.values())
 
 
+def ler_cache_sha():
+    cache = {}
+    try:
+        with open(CACHE_SHA, encoding='utf-8') as f:
+            for linha in f:
+                p = linha.rstrip('\n').split('\t')
+                if len(p) == 3 and len(p[0]) == 64:
+                    cache[p[2]] = (p[0], int(p[1]))
+    except OSError:
+        pass
+    return cache
+
+
+def sha256_dos(manifesto):
+    """SHA-256 de cada linha do manifesto: usa o cache e calcula só o que falta (ou mudou de tamanho)."""
+    import hashlib
+    cache = ler_cache_sha()
+    falta = [(rel, tam) for _, _, rel, tam, url in manifesto
+             if cache.get(rel, ('', -1))[1] != tam and os.path.isfile(os.path.join(RAIZ, *rel.split('/')))]
+    if falta:
+        print('Calculando o SHA-256 de %d arquivos (%.1f GB); os já calculados ficam guardados…' % (
+            len(falta), sum(t for _, t in falta) / 2**30), flush=True)
+        with open(CACHE_SHA, 'a', encoding='utf-8', newline='\n') as saida:
+            for n, (rel, tam) in enumerate(sorted(falta, key=lambda x: x[1]), 1):
+                h = hashlib.sha256()
+                with open(os.path.join(RAIZ, *rel.split('/')), 'rb') as f:
+                    for bloco in iter(lambda: f.read(8 << 20), b''):
+                        h.update(bloco)
+                cache[rel] = (h.hexdigest(), tam)
+                saida.write('%s\t%d\t%s\n' % (h.hexdigest(), tam, rel))
+                if tam > 2**30 or n % 2000 == 0:
+                    saida.flush()
+                    print('   %d de %d: %s' % (n, len(falta), rel), flush=True)
+    return {rel: h for rel, (h, tam) in cache.items()}
+
+
 def main():
     t0 = time.time()
     print('Mapeando a biblioteca em %s (pode levar uns 15 minutos)…' % RAIZ, flush=True)
@@ -140,11 +182,22 @@ def main():
     manifesto.sort(key=lambda x: (x[0], x[2]))
 
     os.makedirs(AQUI, exist_ok=True)
+    shas = {} if '--sem-sha' in sys.argv else sha256_dos(manifesto)
+    reservas = {}     # cópias nossas nos Releases do GitHub (ferramentas/gerar_reservas.py, no repositório)
+    try:
+        with open(os.path.join(AQUI, 'reservas.tsv'), encoding='utf-8') as f:
+            for linha in f:
+                c = linha.rstrip('\n').split('\t')
+                if not linha.startswith('#') and len(c) == 2:
+                    reservas[c[0]] = c[1]
+    except OSError:
+        pass
     arq_man = os.path.join(AQUI, 'manifesto.tsv.gz')
     with gzip.open(arq_man, 'wt', encoding='utf-8') as f:
-        f.write('# prioridade\ttipo\tcaminho\ttamanho\tendereço  (gerado em %s)\n' % time.strftime('%Y-%m-%d %H:%M'))
+        f.write('# prioridade\ttipo\tcaminho\ttamanho\tendereço\tsha256\treserva  (gerado em %s)\n' % time.strftime('%Y-%m-%d %H:%M'))
         for linha in manifesto:
-            f.write('%d\t%s\t%s\t%d\t%s\n' % linha)
+            sha = '' if any(x in linha[4] for x in SEM_SHA) else shas.get(linha[2], '')
+            f.write('%d\t%s\t%s\t%d\t%s\t%s\t%s\n' % (linha + (sha or '-', reservas.get(linha[2], '-'))))
 
     total = sum(x[3] for x in manifesto)
     por = {}
@@ -164,7 +217,7 @@ def main():
             z.write(os.path.join(RAIZ, *rel.split('/')), rel)
         z.write(arq_man, '_Baixador/instalador/manifesto.tsv.gz')
         z.writestr('CONTEUDO.txt', '\r\n'.join(conteudo))
-        for nome in ('LEIA-ME_PRIMEIRO.txt', 'INSTALAR_BIBLIOTECA.bat', 'ESCOLHER_O_QUE_BAIXAR.bat'):
+        for nome in sorted(os.listdir(os.path.join(AQUI, 'modelos'))):   # os .bat, o LEIA-ME e o COMECE_AQUI da raiz
             z.write(os.path.join(AQUI, 'modelos', nome), nome)
     os.replace(saida + '.part', saida)
     print('\n'.join(conteudo))

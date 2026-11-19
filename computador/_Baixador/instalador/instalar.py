@@ -9,10 +9,12 @@ Uso:  INSTALAR_BIBLIOTECA.bat              (instala / continua)
       INSTALAR_BIBLIOTECA.bat --verificar  (só mostra o que falta, não baixa nada)
       INSTALAR_BIBLIOTECA.bat --escolher   (muda o que baixar: as categorias)
       CONFERIR_BIBLIOTECA.bat              (= --auditar: acha arquivo estragado e oferece baixar de novo)
+      COPIAR_RELATORIO.bat                 (= --relatorio: texto com a situação, já copiado, para pedir ajuda)
 """
 import collections
 import concurrent.futures
 import gzip
+import hashlib
 import json
 import os
 import re
@@ -32,6 +34,10 @@ RAIZ = os.path.dirname(BAIXADOR)
 MANIFESTO = os.path.join(AQUI, 'manifesto.tsv.gz')
 REGISTRO = os.path.join(AQUI, 'instalacao_registro.txt')
 TROCAS = os.path.join(AQUI, 'instalacao_trocas.json')
+FALHAS = os.path.join(AQUI, 'instalacao_falhas.json')     # motivos da última rodada, para o relatório
+TESTE = os.path.join(AQUI, 'instalacao_teste.json')       # resultado do teste antes de começar
+RELATORIO = os.path.join(RAIZ, 'RELATORIO_PARA_AJUDA.txt')
+VERSAO = '2026-11-19'
 PYTHON = sys.executable
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BibliotecaOffline/1.0'
 FOLGA_GB = 5
@@ -59,7 +65,10 @@ _trava = threading.Lock()
 estado = {'feitos': 0, 'bytes': 0, 'falhas': [], 'sem_espaco': [], 'pulados': [], 'lento_parado': threading.Event(), 'trocados': {}, 'diferentes': 0,
           'inicio': time.time(), 'total_bytes': 0, 'total_arquivos': 0,
           'baixado': 0,     # bytes que vieram mesmo pela internet nesta rodada (para a velocidade)
-          'ativos': {}}     # arquivo .part em andamento -> (tamanho quando começou, tamanho esperado)
+          'ativos': {},     # arquivo .part em andamento -> (tamanho quando começou, tamanho esperado)
+          'motivos': {},    # caminho -> por que falhou (vai para o relatório)
+          'teste': {}}
+FRAGEIS = ('web.archive.org/', 'trueprepper.com/')   # lentos ou que recusam: com cópia nossa, ela vai na frente
 
 
 def escreve(msg, tela=True):
@@ -85,9 +94,38 @@ def ler_manifesto():
         for linha in f:
             if linha.startswith('#') or not linha.strip():
                 continue
-            prio, tipo, rel, tam, url = linha.rstrip('\n').split('\t')
-            itens.append({'prio': int(prio), 'tipo': tipo, 'rel': rel, 'tam': int(tam or 0), 'url': url})
+            campos = linha.rstrip('\n').split('\t')
+            prio, tipo, rel, tam, url = campos[:5]
+            sha = campos[5].strip().lower() if len(campos) > 5 else ''   # 6ª coluna (opcional): SHA-256
+            reserva = campos[6].strip() if len(campos) > 6 else ''      # 7ª coluna (opcional): outro endereço
+            itens.append({'prio': int(prio), 'tipo': tipo, 'rel': rel, 'tam': int(tam or 0), 'url': url,
+                          'sha': sha if len(sha) == 64 else '', 'reserva': reserva if reserva.startswith('http') else ''})
     return itens
+
+
+def enderecos(item):
+    """Os endereços a tentar, em ordem: o da lista e o reserva (na frente, se o da lista é de um site frágil)."""
+    url, reserva = item['url'], item.get('reserva', '')
+    if not reserva:
+        return [url]
+    return [reserva, url] if any(x in url for x in FRAGEIS) else [url, reserva]
+
+
+def sha256_de(p):
+    h = hashlib.sha256()
+    with open(p, 'rb') as f:
+        for bloco in iter(lambda: f.read(4 << 20), b''):
+            h.update(bloco)
+    return h.hexdigest()
+
+
+def data_do_manifesto():
+    try:
+        with gzip.open(MANIFESTO, 'rt', encoding='utf-8') as f:
+            cab = f.readline()
+        return cab.split('gerado em')[1].strip(' )\n') if 'gerado em' in cab else '?'
+    except (OSError, IndexError):
+        return '?'
 
 
 def caminho(rel):
@@ -231,6 +269,27 @@ def baixar(url, destino, tam):
     raise erro
 
 
+def baixar_de_algum(item):
+    """Tenta cada endereço do item (o da lista e o reserva). Devolve o que funcionou; se nenhum, sobe o 1º erro."""
+    primeiro = None
+    for n, url in enumerate(enderecos(item)):
+        try:
+            baixar(url, caminho(item['rel']), item['tam'])
+            if n:
+                escreve('%s: o primeiro endereço falhou; veio do endereço reserva.' % os.path.basename(item['rel']), tela=False)
+            return url
+        except Exception as e:
+            primeiro = primeiro or e
+    raise primeiro
+
+
+def falhou(rel, motivo, tela=False):
+    escreve('FALHOU: %s (%s)' % (rel, motivo), tela=tela)
+    with _trava:
+        estado['motivos'][rel] = motivo
+    return 'falha'
+
+
 def zim_novo(item):
     """Enciclopédia cujo arquivo saiu do ar: pega a versão mais nova do mesmo livro no catálogo do Kiwix."""
     import re
@@ -257,24 +316,21 @@ def instalar_item(item):
         return 'espaco'
     url, rel, tam = item['url'], item['rel'], item['tam']
     try:
-        baixar(url, caminho(rel), tam)
+        url = baixar_de_algum(item)
     except Exception as e:
         if item['tipo'] != 'zim':
-            escreve('FALHOU: %s (%s)' % (rel, e), tela=tam > 200 * 2**20)   # arquivo grande (ex.: IA): mostra na tela
-            return 'falha'
+            return falhou(rel, str(e), tela=tam > 200 * 2**20)   # arquivo grande (ex.: IA): mostra na tela
         novo = zim_novo(item)
         if not novo or novo[1] == rel:
             # mesmo arquivo no catálogo: não saiu do ar, os servidores é que não entregaram agora
-            escreve('FALHOU: %s (%s). Rode a instalação de novo mais tarde.' % (rel, e) if novo else
-                    'FALHOU (saiu do catálogo do Kiwix): %s' % rel)
-            return 'falha'
+            return falhou(rel, '%s. Rode a instalação de novo mais tarde' % e if novo else 'saiu do catálogo do Kiwix',
+                          tela=True)
         url, rel, tam = novo
         escreve('Enciclopédia fora do ar; baixando a versão nova: %s' % os.path.basename(rel))
         try:
             baixar(url, caminho(rel), tam)
         except Exception as e2:
-            escreve('FALHOU: %s (%s)' % (rel, e2))
-            return 'falha'
+            return falhou(rel, str(e2), tela=True)
         with _trava:
             estado['trocados'][item['rel']] = rel
             with open(TROCAS, 'w', encoding='utf-8') as f:
@@ -282,12 +338,14 @@ def instalar_item(item):
     p = caminho(rel)
     if not conteudo_certo(p, rel):
         os.remove(p)
-        escreve('FALHOU (o site devolveu outra coisa): %s' % rel, tela=False)
-        return 'falha'
+        return falhou(rel, 'o site devolveu outra coisa (página de erro?)')
     if pdf_cortado(p, tam):
         os.remove(p)
-        escreve('FALHOU (o PDF veio cortado): %s' % rel, tela=False)
-        return 'falha'
+        return falhou(rel, 'o PDF veio cortado')
+    if (item['sha'] and rel == item['rel'] and not rel.endswith('.zim') and os.path.getsize(p) == tam
+            and sha256_de(p) != item['sha']):
+        os.remove(p)   # mesmo tamanho do original e conteúdo diferente: veio estragado no caminho
+        return falhou(rel, 'veio corrompido (a conferência SHA-256 não bateu)')
     if tam and os.path.getsize(p) != tam:
         estado['diferentes'] += 1   # o arquivo mudou no site desde a biblioteca original; vale igual
     marcar_ok(p, url + '\n')
@@ -321,6 +379,42 @@ def ocultar_marcas():
         escreve('As %d marcas ".ok" (controle do instalador) agora ficam ocultas no Explorador.' % n, tela=False)
 
 
+def criar_atalho():
+    """Põe na pasta da biblioteca o "ABRIR BIBLIOTECA.exe" com ícone, compilado AQUI com o compilador C# do próprio
+    Windows (um .exe baixado pronto da internet assusta o Windows e alguns antivírus). Se a biblioteca está na raiz
+    de um disco, o disco também ganha o ícone e o nome "Biblioteca Offline" (autorun.inf: o Windows só usa o ícone e
+    o nome, não executa nada). Sem o compilador, fica o ABRIR_BIBLIOTECA.bat de sempre."""
+    if os.name != 'nt':
+        return
+    pasta = os.path.join(AQUI, 'atalho')
+    icone = os.path.join(RAIZ, 'App', 'biblioteca.ico')
+    try:
+        if not os.path.exists(icone):
+            shutil.copyfile(os.path.join(pasta, 'biblioteca.ico'), icone)
+        exe = os.path.join(RAIZ, 'ABRIR BIBLIOTECA.exe')
+        windir = os.environ.get('WINDIR', r'C:\Windows')
+        csc = next((c for c in (os.path.join(windir, 'Microsoft.NET', f, 'v4.0.30319', 'csc.exe')
+                                for f in ('Framework64', 'Framework')) if os.path.exists(c)), None)
+        if csc and not os.path.exists(exe):
+            fonte = os.path.join(AQUI, 'instalacao_atalho.cs')
+            shutil.copyfile(os.path.join(pasta, 'atalho.cs.modelo'), fonte)
+            r = subprocess.run([csc, '/nologo', '/target:winexe', '/optimize+', '/codepage:65001',
+                                '/r:System.Windows.Forms.dll', '/win32icon:' + icone, '/out:' + exe, fonte],
+                               capture_output=True, text=True, creationflags=SEM_JANELA, timeout=120)
+            os.remove(fonte)
+            escreve('Atalho com ícone: %s' % ('ABRIR BIBLIOTECA.exe' if r.returncode == 0 else
+                                               'não deu (%s); use o ABRIR_BIBLIOTECA.bat' % r.stdout.strip()[:200]),
+                    tela=False)
+        if os.path.normcase(os.path.abspath(RAIZ)) == os.path.normcase(os.path.splitdrive(os.path.abspath(RAIZ))[0] + '\\'):
+            aut = os.path.join(RAIZ, 'autorun.inf')
+            if not os.path.exists(aut):
+                with open(aut, 'w', encoding='ascii', newline='') as f:
+                    f.write('[autorun]\r\nicon=App\\biblioteca.ico\r\nlabel=Biblioteca Offline\r\n')
+                ocultar(aut)
+    except Exception as e:
+        escreve('Não consegui criar o atalho com ícone (%s); use o ABRIR_BIBLIOTECA.bat.' % e, tela=False)
+
+
 def auditar(itens, fora):
     """CONFERIR_BIBLIOTECA.bat: confere o que já foi baixado (arquivo sumido, tipo errado, PDF cortado, ZIP
     quebrado e a soma de verificação de cada enciclopédia) e oferece apagar o que estiver estragado, para o
@@ -328,8 +422,8 @@ def auditar(itens, fora):
     rapido = '--rapido' in sys.argv
     print('Conferindo a biblioteca em %s' % RAIZ)
     if not rapido:
-        print('A soma de verificação das enciclopédias lê cada uma inteira: num HD pode levar horas.')
-        print('Para uma conferência rápida (sem essa parte): CONFERIR_BIBLIOTECA.bat --rapido')
+        print('A conferência completa lê cada arquivo inteiro (a "impressão digital" de cada um): num HD pode')
+        print('levar horas. Para uma conferência rápida, sem essa parte: CONFERIR_BIBLIOTECA.bat --rapido')
     print(flush=True)
     problemas, zims, conferidos, t0 = [], [], 0, time.time()
     for n, i in enumerate(itens, 1):
@@ -352,6 +446,9 @@ def auditar(itens, fora):
             problemas.append((rel, 'não é o tipo de arquivo esperado (página de erro?)'))
         elif pdf_cortado(p, i['tam'] if rel == i['rel'] else 0):
             problemas.append((rel, 'PDF cortado (menor que o original e sem o final)'))
+        elif (not rapido and i['sha'] and rel == i['rel'] and ext != '.zim' and tamanho(p) == i['tam']
+              and sha256_de(p) != i['sha']):
+            problemas.append((rel, 'corrompido (a conferência SHA-256 não bateu)'))
         elif ext == '.zim':
             zims.append(rel)
         elif ext in ('.zip', '.epub', '.apk'):
@@ -524,6 +621,226 @@ def perguntar(texto):
         return ''
 
 
+def formato_do_disco():
+    """'NTFS', 'exFAT', 'FAT32'... ou '' se não der para saber."""
+    if os.name != 'nt':
+        return ''
+    try:
+        import ctypes
+        unidade = os.path.splitdrive(os.path.abspath(RAIZ))[0] + '\\'
+        nome = ctypes.create_unicode_buffer(64)
+        ok = ctypes.windll.kernel32.GetVolumeInformationW(ctypes.c_wchar_p(unidade), None, 0, None, None, None, nome, 64)
+        return nome.value if ok else ''
+    except Exception:
+        return ''
+
+
+def velocidade_de_gravacao(mb=64):
+    """MB/s gravando um arquivo de teste na pasta da biblioteca. 0 = não testou; -1 = não conseguiu gravar."""
+    if livre() < (mb + 300) * 2**20:
+        return 0
+    p = os.path.join(AQUI, 'instalacao_teste_de_gravacao.tmp')
+    bloco = os.urandom(1 << 20)
+    try:
+        t = time.time()
+        with open(p, 'wb') as f:
+            for _ in range(mb):
+                f.write(bloco)
+            f.flush()
+            os.fsync(f.fileno())
+        return mb / max(time.time() - t, 0.001)
+    except OSError:
+        return -1
+    finally:
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+
+
+def velocidade_da_internet(itens, segundos=8):
+    """MB/s baixando por alguns segundos o começo de um arquivo grande da lista. 0 = não deu para medir."""
+    grandes = sorted((i for i in itens if i['tam'] > 300 * 2**20 and 'web.archive.org' not in i['url']),
+                     key=lambda i: i['tam'])
+    vistos = set()
+    for i in grandes:
+        host = i['url'].split('/')[2] if '//' in i['url'] else ''
+        if host in vistos or len(vistos) >= 3:
+            continue
+        vistos.add(host)
+        try:
+            req = urllib.request.Request(i['url'], headers={'User-Agent': UA, 'Range': 'bytes=0-67108863'})
+            n, t0 = 0, time.time()
+            with urllib.request.urlopen(req, timeout=20) as r:
+                while time.time() - t0 < segundos:
+                    bloco = r.read(1 << 16)
+                    if not bloco:
+                        break
+                    n += len(bloco)
+            dt = time.time() - t0
+            if n > 2**20 and dt > 1:
+                return n / 2**20 / dt
+        except Exception:
+            continue
+    return 0
+
+
+def nao_dormir(ligar):
+    """Pede ao Windows para não suspender o PC sozinho enquanto a instalação roda (leva dias)."""
+    if os.name != 'nt':
+        return
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | (0x00000001 if ligar else 0))
+    except Exception:
+        pass
+
+
+def teste_inicial(itens, faltam, total):
+    """Confere o disco e a internet antes de baixar. Devolve False se não dá para seguir (ou a pessoa desistiu)."""
+    print('\nTESTE ANTES DE COMEÇAR')
+    t = {'quando': time.strftime('%d/%m/%Y %H:%M')}
+    fmt = formato_do_disco()
+    t['formato'] = fmt
+    uso = shutil.disk_usage(RAIZ)
+    t['disco_gb'], t['livre_gb'] = round(uso.total / 2**30), round(uso.free / 2**30)
+    print('  Disco: %s GB no total, %s GB livres, formato %s.' % (gb(uso.total), gb(uso.free), fmt or 'desconhecido'))
+    continuar = True
+    if fmt.upper() in ('FAT32', 'FAT'):
+        grandes = [i for i in faltam if i['tam'] >= 4 * 2**30 - 1]
+        print('  PROBLEMA: este disco está no formato %s, que não aceita arquivos maiores que 4 GB.' % fmt)
+        print('  %d arquivos da lista (%s GB) são maiores que isso e vão falhar, entre eles a Wikipédia.' % (
+            len(grandes), gb(sum(i['tam'] for i in grandes))))
+        print('  Solução: formate o disco como exFAT (botão direito no disco > Formatar > Sistema de arquivos: exFAT).')
+        print('  ATENÇÃO: formatar APAGA tudo o que está no disco; copie o kit de novo depois.')
+        continuar = perguntar('  Continuar assim mesmo, só com os arquivos menores? (s/n) ').lower().startswith('s')
+    if continuar:
+        v = velocidade_de_gravacao()
+        t['gravacao_mb_s'] = round(v, 1)
+        if v < 0:
+            print('  PROBLEMA: não consegui gravar neste disco. Ele pode estar protegido contra gravação, ou o')
+            print('  antivírus pode estar bloqueando (no Windows: Segurança > Proteção contra ransomware >')
+            print('  Acesso controlado a pastas). Libere e rode de novo.')
+            continuar = False
+        elif v:
+            print('  Gravação no disco: %.0f MB/s%s' % (v, '.' if v >= 15 else
+                  ' (LENTO: é provável que seja um pen drive comum ou uma porta USB antiga. Funciona,\n'
+                  '  mas demora mais. Se puder, use a porta USB azul do computador).'))
+    if continuar:
+        ok, motivo = testar_internet()
+        t['internet'] = 'ok' if ok else motivo
+        if not ok:
+            print('  PROBLEMA: não consegui falar com os sites de download.')
+            print('  Motivo: %s' % motivo)
+            print('  Confira: a internet está ligada? A data e a hora do PC estão certas? O antivírus ou o firewall')
+            print('  está bloqueando o Python (Programas\\Python\\python.exe)?')
+            continuar = perguntar('  Tentar baixar mesmo assim? (s/n) ').lower().startswith('s')
+        else:
+            v = velocidade_da_internet(itens)
+            t['internet_mb_s'] = round(v, 1)
+            if v:
+                print('  Internet: %.1f MB/s agora. Neste ritmo, os %s GB que faltam levam %s.' % (
+                    v, gb(total), texto_tempo(total / (v * 2**20))))
+            else:
+                print('  Internet: funcionando (não deu para medir a velocidade agora).')
+    if continuar and livre() < total + FOLGA_GB * 2**30:
+        print('  O espaço livre NÃO dá para tudo: vou instalar por ordem de importância (o essencial primeiro)')
+        print('  e pular o que não couber. Para a biblioteca completa use um HD/SSD de 1 TB vazio.')
+    t['curl'] = 'sim' if baixa_seguro.achar_curl() else 'não (baixando pelo próprio Python)'
+    estado['teste'] = t
+    try:
+        with open(TESTE, 'w', encoding='utf-8') as f:
+            json.dump(t, f, ensure_ascii=False, indent=1)
+    except OSError:
+        pass
+    print()
+    return continuar
+
+
+def ler_json(arq, padrao):
+    try:
+        with open(arq, encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return padrao
+
+
+def texto_do_relatorio(itens, fora):
+    """Texto curto com a situação da instalação, para a pessoa colar na conversa de ajuda. Sem dados pessoais."""
+    import platform
+    t = estado['teste'] or ler_json(TESTE, {})
+    falhas = estado['motivos'] or ler_json(FALHAS, {})
+    uso = shutil.disk_usage(RAIZ)
+    querem = [i for i in itens if i['tipo'] != 'gerado' and categorias.quer(i['rel'], fora)]
+    faltam = [i for i in querem if not pronto(i)]
+    por = {}
+    for i in faltam:
+        k = '/'.join(i['rel'].split('/')[:2 if i['rel'].startswith(('5_Acervo', '2_Mapas')) else 1])
+        n, b = por.get(k, (0, 0))
+        por[k] = (n + 1, b + i['tam'])
+    pasta = os.path.abspath(RAIZ)
+    casa = os.path.expanduser('~')
+    if casa and pasta.lower().startswith(casa.lower()):
+        pasta = '(pasta do usuário)' + pasta[len(casa):]      # não leva o nome da pessoa
+    L = ['RELATÓRIO DA BIBLIOTECA OFFLINE (cole este texto inteiro na conversa de ajuda)',
+         'Gerado em %s · instalador %s · lista de %s' % (time.strftime('%d/%m/%Y %H:%M'), VERSAO, data_do_manifesto()),
+         'Windows %s · Python %s' % (platform.version(), platform.python_version()),
+         'Pasta: %s · disco %s · %s GB no total · %s GB livres' % (
+             pasta, formato_do_disco() or '?', gb(uso.total), gb(uso.free))]
+    if t:
+        L.append('Teste de %s: gravação %s MB/s · internet %s%s · curl %s' % (
+            t.get('quando', '?'), t.get('gravacao_mb_s', '?'), t.get('internet', '?'),
+            ' (%s MB/s)' % t['internet_mb_s'] if t.get('internet_mb_s') else '', t.get('curl', '?')))
+    L.append('Deixado de fora: %s' % (', '.join(fora) if fora else 'nada (baixando tudo)'))
+    L.append('Prontos: %d de %d arquivos · faltam %s GB' % (
+        len(querem) - len(faltam), len(querem), gb(sum(i['tam'] for i in faltam))))
+    for k, (n, b) in sorted(por.items(), key=lambda x: -x[1][1])[:15]:
+        L.append('  falta %s: %d arquivos, %s GB' % (k, n, gb(b)))
+    sobras = [i for i in faltam if os.path.exists(caminho(i['rel']) + '.part')]
+    for i in sorted(sobras, key=lambda i: -i['tam'])[:5]:
+        L.append('  pela metade: %s (%s de %s GB)' % (
+            os.path.basename(i['rel']), gb(os.path.getsize(caminho(i['rel']) + '.part')), gb(i['tam'])))
+    if falhas:
+        L.append('Falhas da última rodada: %d' % len(falhas))
+        for m, n in collections.Counter(falhas.values()).most_common(8):
+            L.append('  %d × %s' % (n, m))
+        for rel, m in list(falhas.items())[:12]:
+            L.append('  %s — %s' % (rel, m))
+    try:
+        with open(REGISTRO, encoding='utf-8', errors='replace') as f:
+            fim = f.readlines()[-25:]
+        L.append('Últimas linhas do registro:')
+        L += ['  ' + x.rstrip()[:200] for x in fim]
+    except OSError:
+        L.append('Ainda não há registro: a instalação não rodou nesta pasta.')
+    return '\r\n'.join(L) + '\r\n'
+
+
+def copiar_relatorio(itens, fora):
+    """COPIAR_RELATORIO.bat: monta o texto, grava em RELATORIO_PARA_AJUDA.txt e já deixa copiado."""
+    print('Montando o relatório (pode levar um minuto)…', flush=True)
+    texto = texto_do_relatorio(itens, fora)
+    try:
+        with open(RELATORIO, 'w', encoding='utf-8-sig', newline='') as f:
+            f.write(texto)
+    except OSError:
+        pass
+    copiado = False
+    if os.name == 'nt':
+        try:    # o clip.exe do Windows entende UTF-16 com a marca no começo
+            subprocess.run(['clip'], input=('﻿' + texto).encode('utf-16-le'), timeout=20,
+                           creationflags=SEM_JANELA, check=True)
+            copiado = True
+        except Exception:
+            pass
+    print()
+    print(texto)
+    if copiado:
+        print('O RELATÓRIO JÁ ESTÁ COPIADO. Abra a conversa de ajuda e cole (Ctrl+V).')
+    else:
+        print('Não consegui copiar sozinho. O texto está no arquivo %s: abra, selecione tudo e copie.' % RELATORIO)
+
+
 def menu(itens):
     """Pergunta o que NÃO baixar. ENTER = tudo. Devolve a lista de categorias deixadas de fora."""
     tam = {}
@@ -643,6 +960,8 @@ def main():
     fora = fora or []
     if '--auditar' in sys.argv:
         return auditar(itens, fora)
+    if '--relatorio' in sys.argv:
+        return copiar_relatorio(itens, fora)
     if fora:
         print('Deixado de fora (para mudar: dois cliques em ESCOLHER_O_QUE_BAIXAR.bat):')
         for c in fora:
@@ -678,22 +997,11 @@ def main():
             print('   falta %-45s %6d arquivos  %8s GB' % (k, n, gb(t)))
         return
     ocultar_marcas()
-    if livre() < total + FOLGA_GB * 2**30:
-        print('\nO espaço livre NÃO dá para tudo. Vou instalar por ordem de importância (o essencial primeiro)')
-        print('e pular o que não couber. Para a biblioteca completa use um HD/SSD de 1 TB vazio.\n')
-    ok, motivo = testar_internet()
-    if not ok:
-        print('\nNão consegui falar com os sites de download.')
-        print('Motivo: %s' % motivo)
-        print('Confira: a internet está ligada? A data e a hora do PC estão certas? O antivírus ou o firewall')
-        print('está bloqueando o Python (Programas\\Python\\python.exe)?')
-        try:
-            r = input('\nTentar baixar mesmo assim? (s/n) ').strip().lower()
-        except EOFError:
-            r = 'n'
-        if not r.startswith('s'):
-            return
-    print('Isto leva de horas a alguns dias (depende da internet). Pode deixar rodando; se parar, rode de novo.\n')
+    if not teste_inicial(itens, faltam, total):
+        return
+    nao_dormir(True)   # o Windows não suspende o PC no meio (a instalação leva dias); desliga no fim
+    print('Isto leva de horas a alguns dias (depende da internet). Pode deixar rodando; se parar, rode de novo.')
+    print('O computador não vai dormir sozinho enquanto esta janela estiver aberta.\n')
     escreve('===== instalação: início (%d arquivos, %s GB a baixar) =====' % (len(faltam), gb(total)))
     estado.update(total_bytes=total, total_arquivos=len(faltam), inicio=time.time())
     parar = threading.Event()
@@ -744,6 +1052,12 @@ def main():
     baixados = (estado['feitos'] - len(estado['falhas']) - len(estado['sem_espaco']) - len(estado['pulados'])
                 + estado.get('de_novo', 0))
     estado['falhas'] = [r for r in estado['falhas'] if r not in arquivo_web]   # esses viram o aviso abaixo
+    nao_dormir(False)
+    try:
+        with open(FALHAS, 'w', encoding='utf-8') as f:   # para o COPIAR_RELATORIO.bat
+            json.dump({r: m for r, m in estado['motivos'].items() if not os.path.exists(caminho(r) + '.ok')}, f, ensure_ascii=False, indent=1)
+    except OSError:
+        pass
     print()
     escreve('===== instalação: fim =====')
     print('Baixados nesta rodada: %d arquivos.' % baixados)
@@ -761,6 +1075,7 @@ def main():
     if estado['falhas']:
         print('FALHARAM %d arquivos (site fora do ar ou endereço mudou). Rode a instalação de novo mais tarde;' % len(estado['falhas']))
         print('se continuar, os baixadores em _Baixador (ex.: BAIXAR_EMBRAPA.bat) buscam pelo catálogo atual.')
+        print('Para pedir ajuda: dois cliques em COPIAR_RELATORIO.bat e cole o texto na conversa de ajuda.')
         escreve('falhas: ' + ' | '.join(estado['falhas'][:2000]), tela=False)
         for r in estado['falhas'][:15]:
             print('   - %s' % r)
@@ -770,7 +1085,11 @@ def main():
         print('Lista de tudo o que está na biblioteca: CATALOGO.html (abre em qualquer navegador, sem o app).')
     except Exception as e:
         escreve('Não consegui gerar o CATALOGO.html (%s)' % e, tela=False)
-    print('\nPRONTO. Para usar: dois cliques em ABRIR_BIBLIOTECA.bat.')
+    criar_atalho()
+    print('\nPRONTO. Para usar: dois cliques em %s.' % (
+        'ABRIR BIBLIOTECA (o atalho com o ícone do livro)' if os.path.exists(os.path.join(RAIZ, 'ABRIR BIBLIOTECA.exe'))
+        else 'ABRIR_BIBLIOTECA.bat'))
+    print('Guia rápido de uso: COMECE_AQUI.html.')
     print('Na primeira vez o app monta o índice de busca (algumas horas; dá para ir usando enquanto isso).')
     limpar_teclas()
 

@@ -50,7 +50,7 @@ Precisa de Android 8 ou mais novo. iPhone não funciona.
 
 - **O app do celular:** [Biblioteca_de_Bolso_1.2.8.apk](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.2.8/Biblioteca_de_Bolso_1.2.8.apk) (47 MB).
 - **Baixar o Slim no computador e passar para o celular:** [Preparar_Celular.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Preparar_Celular.zip) (0,2 MB).
-- **Instalar a biblioteca completa no computador:** [Kit_Biblioteca_Offline_2026-11-19.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip) (28 MB).
+- **Instalar a biblioteca completa no computador:** [Kit_Biblioteca_Offline_2026-11-19.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip) (30 MB).
 
 Os arquivos são pequenos porque não levam o conteúdo: o app e os programas baixam cada livro e
 enciclopédia direto das fontes originais (Kiwix, Embrapa, SciELO, Hesperian, Biblioteca Digital do

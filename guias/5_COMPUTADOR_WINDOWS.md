@@ -33,7 +33,7 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
 
 ## Passo a passo
 
-1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-19.zip (28 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip)**.
+1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-19.zip (30 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip)**.
 2. Ligue o HD/SSD vazio no computador.
 3. Clique com o botão direito no zip › **Extrair tudo…**.
    - Em **"Os arquivos serão extraídos para esta pasta"**, escolha a **raiz** do HD/SSD, por exemplo `E:\`.
@@ -63,7 +63,8 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
      Enquanto um gigante baixa, o número de arquivos fica parado por horas: é normal, olhe os GB.
    - **Se fechar, faltar luz ou cair a internet:** dê dois cliques de novo. Ele continua de onde parou e
      não baixa nada duas vezes.
-5. Quando aparecer **PRONTO**, dê dois cliques em **`ABRIR_BIBLIOTECA.bat`**.
+5. Quando aparecer **PRONTO**, dê dois cliques em **ABRIR BIBLIOTECA** (o atalho com o ícone do livro, que o
+   instalador cria no fim) ou em **`ABRIR_BIBLIOTECA.bat`**. O guia rápido de uso é o **`COMECE_AQUI.html`**.
    Na primeira vez, o app monta o índice de busca, o que leva algumas horas. Dá para ir usando enquanto isso.
    **Esse índice é o que o celular usa para buscar dentro dos manuais**, por isso abra a biblioteca uma vez antes
    de levar o SSD para o celular.
@@ -116,7 +117,8 @@ descompacte na raiz do HD substituindo os arquivos e rode o `INSTALAR_BIBLIOTECA
 - **Parece parado:** olhe os GB e o arquivo que aparece em "agora". Se os GB sobem, está baixando.
 - **Muito lento:** teste a internet em [fast.com](https://fast.com). Se for menos de 10 Mbps, deixe de fora as partes
   grandes em `ESCOLHER_O_QUE_BAIXAR.bat` (Survivor Library, Wikipédia e literatura em inglês) e baixe depois.
-- **Pedir ajuda:** mande uma foto da janela inteira, ou o final do registro detalhado (abaixo).
+- **Pedir ajuda:** dê dois cliques em **`COPIAR_RELATORIO.bat`**. Ele monta um texto com a situação da instalação
+  (o que falta, o que falhou e por quê), sem o seu nome, e já deixa copiado: é só colar na conversa.
 - **Para ver o que falta sem baixar nada:** abra um Prompt de Comando na pasta e digite
   `INSTALAR_BIBLIOTECA.bat --verificar`.
 - **Desconfia de algum arquivo estragado?** Dê dois cliques em **`CONFERIR_BIBLIOTECA.bat`**. Ele confere o que

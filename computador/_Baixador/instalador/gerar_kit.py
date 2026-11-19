@@ -192,12 +192,18 @@ def main():
                     reservas[c[0]] = c[1]
     except OSError:
         pass
+    sys.path.insert(0, AQUI)
+    import espelho        # cópia nossa no Cloudflare R2 (espelho.tsv): vira o 1º endereço, o de antes vira reserva
+    base_espelho, no_espelho = espelho.ler()
     arq_man = os.path.join(AQUI, 'manifesto.tsv.gz')
     with gzip.open(arq_man, 'wt', encoding='utf-8') as f:
-        f.write('# prioridade\ttipo\tcaminho\ttamanho\tendereço\tsha256\treserva  (gerado em %s)\n' % time.strftime('%Y-%m-%d %H:%M'))
+        f.write('# prioridade\ttipo\tcaminho\ttamanho\tendereço\tsha256\treserva\tmais_reservas  (gerado em %s)\n'
+                % time.strftime('%Y-%m-%d %H:%M'))
         for linha in manifesto:
             sha = '' if any(x in linha[4] for x in SEM_SHA) else shas.get(linha[2], '')
-            f.write('%d\t%s\t%s\t%d\t%s\t%s\t%s\n' % (linha + (sha or '-', reservas.get(linha[2], '-'))))
+            reserva = reservas.get(linha[2], '-')
+            c = [str(x) for x in linha] + [sha or '-', reserva if reserva != linha[4] else '-', '-']
+            f.write('\t'.join(espelho.aplicar(c, base_espelho, no_espelho)) + '\n')
 
     total = sum(x[3] for x in manifesto)
     por = {}

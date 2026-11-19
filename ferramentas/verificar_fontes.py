@@ -44,6 +44,15 @@ REGRAS = {
     'www.infoteca.cnptia.embrapa.br': {'limite': 600, 'pausa': 0.3},
     'github.com': {'limite': 600, 'pausa': 0.1},
 }
+# O nosso espelho (Cloudflare R2): testa bem mais por semana, ele aguenta e é a 1ª fonte de quem instala.
+ESPELHO = os.path.join(RAIZ, 'computador', '_Baixador', 'instalador', 'espelho.tsv')
+try:
+    with open(ESPELHO, encoding='utf-8') as _f:
+        for _l in _f:
+            if _l.startswith('# base	'):
+                REGRAS[urllib.parse.urlsplit(_l.split('	', 1)[1].strip()).netloc.lower()] = {'limite': 8000, 'pausa': 0}
+except OSError:
+    pass
 # Endereços de "última versão": o tamanho muda de propósito.
 TAMANHO_LIVRE = ('download.mozilla.org', 'product=firefox-latest')
 

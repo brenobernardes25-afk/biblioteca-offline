@@ -67,8 +67,11 @@ estado = {'feitos': 0, 'bytes': 0, 'falhas': [], 'sem_espaco': [], 'pulados': []
           'baixado': 0,     # bytes que vieram mesmo pela internet nesta rodada (para a velocidade)
           'ativos': {},     # arquivo .part em andamento -> (tamanho quando começou, tamanho esperado)
           'motivos': {},    # caminho -> por que falhou (vai para o relatório)
-          'teste': {}}
-FRAGEIS = ('web.archive.org/', 'trueprepper.com/')   # lentos ou que recusam: com cópia nossa, ela vai na frente
+          'teste': {},
+          'falhas_seguidas': {},   # servidor -> falhas seguidas (só de arquivos que têm outro endereço)
+          'fora_do_ar': set()}     # servidores que pararam de responder nesta rodada: vão para o fim da fila
+FORA_DO_AR = 8
+FRAGEIS =('web.archive.org/', 'trueprepper.com/')   # lentos ou que recusam: com cópia nossa, ela vai na frente
 
 
 def escreve(msg, tela=True):
@@ -98,17 +101,28 @@ def ler_manifesto():
             prio, tipo, rel, tam, url = campos[:5]
             sha = campos[5].strip().lower() if len(campos) > 5 else ''   # 6ª coluna (opcional): SHA-256
             reserva = campos[6].strip() if len(campos) > 6 else ''      # 7ª coluna (opcional): outro endereço
+            mais = campos[7].split() if len(campos) > 7 else []          # 8ª coluna (opcional): outros, com espaço
             itens.append({'prio': int(prio), 'tipo': tipo, 'rel': rel, 'tam': int(tam or 0), 'url': url,
-                          'sha': sha if len(sha) == 64 else '', 'reserva': reserva if reserva.startswith('http') else ''})
+                          'sha': sha if len(sha) == 64 else '', 'reserva': reserva if reserva.startswith('http') else '',
+                          'mais': [u for u in mais if u.startswith('http')]})
     return itens
 
 
 def enderecos(item):
-    """Os endereços a tentar, em ordem: o da lista e o reserva (na frente, se o da lista é de um site frágil)."""
-    url, reserva = item['url'], item.get('reserva', '')
-    if not reserva:
-        return [url]
-    return [reserva, url] if any(x in url for x in FRAGEIS) else [url, reserva]
+    """Os endereços a tentar, em ordem: o da lista, o reserva e os outros, com os de site frágil por último
+    (o 1º costuma ser o nosso espelho; sem ele, a cópia no GitHub passa na frente de um site frágil)."""
+    todos = []
+    for u in [item['url'], item.get('reserva', '')] + item.get('mais', []):
+        if u and u not in todos:
+            todos.append(u)
+    ordem = [u for u in todos if not any(x in u for x in FRAGEIS)] + [u for u in todos if any(x in u for x in FRAGEIS)]
+    # servidor que parou de responder nesta rodada vai para o fim (sem ele, cada arquivo esperaria por ele)
+    return [u for u in ordem if servidor(u) not in estado['fora_do_ar']] + \
+           [u for u in ordem if servidor(u) in estado['fora_do_ar']]
+
+
+def servidor(url):
+    return url.split('/')[2].lower() if url.count('/') >= 2 else url
 
 
 def sha256_de(p):
@@ -251,12 +265,13 @@ def espelhos(url):
     return [u for u in dict.fromkeys(achados) if u != url][:6]
 
 
-def baixar(url, destino, tam):
-    """Baixa do endereço da lista; se falhar e for do Kiwix, tenta os outros espelhos antes de desistir."""
+def baixar(url, destino, tam, rapido=False):
+    """Baixa do endereço da lista; se falhar e for do Kiwix, tenta os outros espelhos antes de desistir.
+    rapido: há outro endereço depois deste, então insiste menos aqui."""
     if 'web.archive.org/' in url:   # quando ele bloqueia, a conexão fica pendurada: falha logo e deixa o resto andar
         return baixar_url(url, destino, tam, tentativas=3, espera=60)
     try:
-        return baixar_url(url, destino, tam)
+        return baixar_url(url, destino, tam, tentativas=3 if rapido else 5, espera=60 if rapido else 180)
     except Exception as e:
         erro = e
     for alt in espelhos(url):
@@ -272,14 +287,31 @@ def baixar(url, destino, tam):
 def baixar_de_algum(item):
     """Tenta cada endereço do item (o da lista e o reserva). Devolve o que funcionou; se nenhum, sobe o 1º erro."""
     primeiro = None
-    for n, url in enumerate(enderecos(item)):
+    lista = enderecos(item)
+    for n, url in enumerate(lista):
+        host = servidor(url)
         try:
-            baixar(url, caminho(item['rel']), item['tam'])
+            baixar(url, caminho(item['rel']), item['tam'], rapido=n < len(lista) - 1)
+            with _trava:   # (escreve() também usa a _trava: escrever só depois de soltar)
+                estado['falhas_seguidas'][host] = 0
+                voltou = host in estado['fora_do_ar']
+                estado['fora_do_ar'].discard(host)
+            if voltou:
+                escreve('%s voltou a responder.' % host, tela=False)
             if n:
                 escreve('%s: o primeiro endereço falhou; veio do endereço reserva.' % os.path.basename(item['rel']), tela=False)
             return url
         except Exception as e:
             primeiro = primeiro or e
+            if len(lista) > 1:
+                with _trava:
+                    estado['falhas_seguidas'][host] = estado['falhas_seguidas'].get(host, 0) + 1
+                    caiu = estado['falhas_seguidas'][host] >= FORA_DO_AR and host not in estado['fora_do_ar']
+                    if caiu:
+                        estado['fora_do_ar'].add(host)
+                if caiu:
+                    escreve('%s não está respondendo (%d falhas seguidas): os arquivos de lá vêm do endereço '
+                            'reserva.' % (host, FORA_DO_AR))
     raise primeiro
 
 

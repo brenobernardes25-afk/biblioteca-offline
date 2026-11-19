@@ -1,0 +1,41 @@
+# Testa toda semana se os endereços de download da biblioteca ainda funcionam.
+# Se algum arquivo sumiu ou mudou de tamanho, abre (ou atualiza) uma issue "Fontes quebradas".
+name: Verificar fontes
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'      # toda segunda-feira, 4h da manhã no horário de Brasília
+  workflow_dispatch:          # e à mão, pelo botão "Run workflow"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Testar os endereços
+        id: teste
+        run: python ferramentas/verificar_fontes.py --saida relatorio_fontes.md
+      - name: Guardar o relatório
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-fontes
+          path: relatorio_fontes.md
+      - name: Avisar se algo quebrou
+        if: steps.teste.outputs.quebrados != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          numero=$(gh issue list --state open --search "Fontes quebradas in:title" --json number --jq '.[0].number')
+          if [ -n "$numero" ]; then
+            gh issue comment "$numero" --body-file relatorio_fontes.md
+          else
+            gh issue create --title "Fontes quebradas (verificador automático)" --body-file relatorio_fontes.md
+          fi

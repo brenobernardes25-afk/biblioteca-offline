@@ -33,7 +33,7 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
 
 ## Passo a passo
 
-1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-16.zip (28 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-16/Kit_Biblioteca_Offline_2026-11-16.zip)**.
+1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-19.zip (28 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip)**.
 2. Ligue o HD/SSD vazio no computador.
 3. Clique com o botão direito no zip › **Extrair tudo…**.
    - Em **"Os arquivos serão extraídos para esta pasta"**, escolha a **raiz** do HD/SSD, por exemplo `E:\`.
@@ -97,7 +97,7 @@ Para atualizar, faça os 3 passos de "Corrigir os PDFs cortados", logo abaixo. N
 Os kits até 05/11/2026 traziam 943 PDFs cortados no meio: saúde, livros da SciELO e alguns da Embrapa.
 Não precisa começar de novo:
 
-1. Baixe o [kit mais recente](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-16/Kit_Biblioteca_Offline_2026-11-16.zip).
+1. Baixe o [kit mais recente](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip).
 2. Descompacte na **raiz** do HD, onde está o `INSTALAR_BIBLIOTECA.bat`, e escolha **substituir os arquivos**.
 3. Rode o `INSTALAR_BIBLIOTECA.bat`. Na primeira vez com o kit novo, ele pergunta o que baixar: tecle **ENTER**
    para continuar com tudo. Depois ele baixa só o que estava cortado (cerca de 12 GB).

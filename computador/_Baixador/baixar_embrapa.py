@@ -18,6 +18,9 @@ import urllib.request
 from html import unescape
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
+if AQUI not in sys.path:
+    sys.path.insert(0, AQUI)   # o Python roda com -I: acha o baixa_seguro.py
+from baixa_seguro import marcar_ok  # noqa: E402  (marca .ok oculta)
 RAIZ = os.path.dirname(AQUI)
 DEST = os.path.join(RAIZ, '5_Acervo', 'Agricultura', 'Embrapa')
 INDICE = os.path.join(DEST, '_indice.txt')
@@ -145,8 +148,7 @@ def baixar(url, destino):
                     os.remove(parcial)
                     return False
             os.replace(parcial, destino)
-            with open(destino + '.ok', 'w', encoding='utf-8') as f:
-                f.write(url + '\n')
+            marcar_ok(destino, url + '\n')
             return True
         except urllib.error.HTTPError as e:
             if e.code in (403, 404, 410):

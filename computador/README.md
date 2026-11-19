@@ -12,10 +12,12 @@ binários do Python portátil e do Visual C++, que vão só no zip.
 |---|---|
 | `INSTALAR_BIBLIOTECA.bat` | Inicia o instalador (`_Baixador/instalador/instalar.py`) |
 | `ESCOLHER_O_QUE_BAIXAR.bat` | Abre de novo o menu de categorias |
+| `CONFERIR_BIBLIOTECA.bat` | Confere o que já foi baixado (inclusive o MD5 de cada ZIM) e oferece baixar de novo o que estiver estragado |
 | `_Baixador/instalador/manifesto.tsv.gz` | **A lista da biblioteca**: os ~54 mil arquivos, com prioridade, tipo, caminho, tamanho e endereço de origem |
 | `_Baixador/instalador/categorias.py` | As categorias do menu "o que baixar" e a regra que põe cada arquivo numa delas |
 | `_Baixador/instalador/instalar.py` | O instalador: baixa por prioridade, retoma, confere cada arquivo |
 | `_Baixador/instalador/gerar_kit.py` | Gera o kit a partir de uma biblioteca instalada |
+| `_Baixador/instalador/gerar_catalogo.py` | Gera o `CATALOGO.html` e o `CATALOGO.csv` (lista legível de tudo o que está instalado) |
 | `_Baixador/atualizar.py` | A atualização pela internet (botão do app), que respeita as categorias escolhidas |
 | `_Baixador/baixar_*.py` | Os baixadores de cada fonte (Embrapa, Exército, SciELO, mapas, textos religiosos...) |
 | `App/` | O app que abre no navegador: busca, leitor, IA, tradutor, OCR e mapa |

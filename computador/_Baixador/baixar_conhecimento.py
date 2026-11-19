@@ -28,6 +28,7 @@ import urllib.request
 AQUI = os.path.dirname(os.path.abspath(__file__))
 if AQUI not in sys.path:
     sys.path.insert(0, AQUI)   # para achar o baixa_seguro.py (o Python roda com -I)
+from baixa_seguro import marcar_ok  # noqa: E402  (marca .ok oculta)
 RAIZ = os.path.dirname(AQUI)
 DESTINO = os.path.join(RAIZ, '1_Enciclopedia')
 LOG = os.path.join(AQUI, 'registro.txt')
@@ -275,8 +276,7 @@ def baixar(url, destino, esperado, rotulo, plano, prio=1):
     feito = os.path.getsize(destino) if os.path.exists(destino) else 0
     if feito and zim_completo(destino, esperado):
         # baixado numa rodada anterior, mas sem a marca .ok
-        with open(destino + '.ok', 'w', encoding='utf-8') as f:
-            f.write(url + '\n')
+        marcar_ok(destino, url + '\n')
         escreve('OK: %s' % rotulo)
         return 'ok'
     if not plano.cabe(destino, esperado, prio):
@@ -287,9 +287,12 @@ def baixar(url, destino, esperado, rotulo, plano, prio=1):
         for t in range(1, 8):
             import baixa_seguro   # usa o curl.exe se existir; senão baixa pelo Python (retomável)
             cod = baixa_seguro.baixar(url, destino, UA)
+            if zim_completo(destino, esperado) and not baixa_seguro.zim_md5_certo(destino):
+                escreve('Veio estragado (soma de verificação errada), recomecando: %s' % rotulo)
+                os.remove(destino)
+                continue
             if zim_completo(destino, esperado):
-                with open(destino + '.ok', 'w', encoding='utf-8') as f:
-                    f.write(url + '\n')
+                marcar_ok(destino, url + '\n')
                 escreve('OK: %s' % rotulo)
                 return 'ok'
             tam = os.path.getsize(destino) if os.path.exists(destino) else 0

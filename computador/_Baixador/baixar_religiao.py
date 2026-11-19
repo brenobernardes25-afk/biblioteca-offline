@@ -15,12 +15,16 @@ import json
 import os
 import re
 import shutil
+import sys
 import time
 import urllib.parse
 import urllib.request
 import zipfile
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
+if AQUI not in sys.path:
+    sys.path.insert(0, AQUI)   # o Python roda com -I: acha o baixa_seguro.py
+from baixa_seguro import marcar_ok  # noqa: E402  (marca .ok oculta)
 RAIZ = os.path.dirname(AQUI)
 DEST = os.path.join(RAIZ, '5_Acervo', 'Religiao')
 LOG = os.path.join(AQUI, 'registro.txt')
@@ -60,8 +64,7 @@ def abrir(url, tentativas=4):
 
 
 def marcar(destino, fonte):
-    with open(destino + '.ok', 'w', encoding='utf-8') as f:
-        f.write(fonte + '\n')
+    marcar_ok(destino, fonte + '\n')
 
 
 def indice(pasta, arquivo, titulo):

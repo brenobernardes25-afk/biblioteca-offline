@@ -33,7 +33,7 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
 
 ## Passo a passo
 
-1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-16.zip (28 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-16/Kit_Biblioteca_Offline_2026-11-16.zip)**.
+1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-19.zip (28 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip)**.
 2. Ligue o HD/SSD vazio no computador.
 3. Clique com o botão direito no zip › **Extrair tudo…**.
    - Em **"Os arquivos serão extraídos para esta pasta"**, escolha a **raiz** do HD/SSD, por exemplo `E:\`.
@@ -68,6 +68,10 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
    **Esse índice é o que o celular usa para buscar dentro dos manuais**, por isso abra a biblioteca uma vez antes
    de levar o SSD para o celular.
 
+**A lista de tudo o que foi baixado** fica em **`CATALOGO.html`**, na pasta da biblioteca: abre em qualquer
+navegador, mesmo sem o app, tem busca (sem precisar de acento) e abre cada PDF com um clique. Também há
+`CATALOGO.csv`, para planilha.
+
 **Mudou de ideia sobre o que baixar?** Dê dois cliques em **`ESCOLHER_O_QUE_BAIXAR.bat`**. Nada do que já foi
 baixado é apagado. A atualização pela internet também respeita a sua escolha.
 
@@ -93,7 +97,7 @@ Para atualizar, faça os 3 passos de "Corrigir os PDFs cortados", logo abaixo. N
 Os kits até 05/11/2026 traziam 943 PDFs cortados no meio: saúde, livros da SciELO e alguns da Embrapa.
 Não precisa começar de novo:
 
-1. Baixe o [kit mais recente](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-16/Kit_Biblioteca_Offline_2026-11-16.zip).
+1. Baixe o [kit mais recente](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip).
 2. Descompacte na **raiz** do HD, onde está o `INSTALAR_BIBLIOTECA.bat`, e escolha **substituir os arquivos**.
 3. Rode o `INSTALAR_BIBLIOTECA.bat`. Na primeira vez com o kit novo, ele pergunta o que baixar: tecle **ENTER**
    para continuar com tudo. Depois ele baixa só o que estava cortado (cerca de 12 GB).
@@ -115,6 +119,10 @@ descompacte na raiz do HD substituindo os arquivos e rode o `INSTALAR_BIBLIOTECA
 - **Pedir ajuda:** mande uma foto da janela inteira, ou o final do registro detalhado (abaixo).
 - **Para ver o que falta sem baixar nada:** abra um Prompt de Comando na pasta e digite
   `INSTALAR_BIBLIOTECA.bat --verificar`.
+- **Desconfia de algum arquivo estragado?** Dê dois cliques em **`CONFERIR_BIBLIOTECA.bat`**. Ele confere o que
+  já foi baixado (arquivo sumido, PDF cortado, ZIP quebrado e a soma de verificação de cada enciclopédia) e
+  oferece apagar o que estiver com problema, para o instalador baixar de novo. A soma lê cada enciclopédia
+  inteira e pode levar horas; para uma conferência rápida, sem essa parte: `CONFERIR_BIBLIOTECA.bat --rapido`.
 - **Registro detalhado:** `_Baixador\instalador\instalacao_registro.txt`.
 - **Depois de instalada,** a biblioteca se atualiza pelo próprio app: **Situação › Atualizar pela internet**.
 

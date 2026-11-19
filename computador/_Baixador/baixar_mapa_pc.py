@@ -24,6 +24,9 @@ import urllib.request
 import zipfile
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
+if AQUI not in sys.path:
+    sys.path.insert(0, AQUI)   # o Python roda com -I: acha o baixa_seguro.py
+from baixa_seguro import marcar_ok  # noqa: E402  (marca .ok oculta)
 RAIZ = os.path.dirname(AQUI)
 LOG = os.path.join(AQUI, 'registro.txt')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BibliotecaOffline/1.0'
@@ -325,8 +328,7 @@ class Recorte:
             f.truncate(dados_ini + total)
         os.replace(parcial, destino)
         os.remove(retomar)
-        with open(destino + '.ok', 'w', encoding='utf-8') as f:
-            f.write(self.url + chr(10))
+        marcar_ok(destino, self.url + chr(10))
         escreve('Mapa do PC: gravado %s (%.2f GB)' % (destino, os.path.getsize(destino) / 2**30))
 
     @staticmethod
@@ -379,8 +381,7 @@ def lugares():
         f.write('nome\tlat\tlon\ttipo\testado\tpopulacao\n')
         for nome, lat, lon, cod, adm1, pop in linhas:
             f.write('%s\t%s\t%s\t%s\t%s\t%d\n' % (nome, lat, lon, cod, estados.get(adm1, ''), pop))
-    with open(destino + '.ok', 'w', encoding='utf-8') as f:
-        f.write('https://download.geonames.org/export/dump/BR.zip (CC BY 4.0)\n')
+    marcar_ok(destino, 'https://download.geonames.org/export/dump/BR.zip (CC BY 4.0)\n')
     escreve('Lugares: %d nomes do Brasil (GeoNames)' % len(linhas))
 
 

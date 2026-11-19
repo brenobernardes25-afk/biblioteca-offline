@@ -35,6 +35,69 @@ def usar_certificados():
 usar_certificados()
 
 
+def ocultar(p, sim=True):
+    """Liga/desliga o atributo "oculto" do Windows (as marcas .ok não aparecem no Explorador)."""
+    if os.name != 'nt':
+        return
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        k.GetFileAttributesW.restype = ctypes.c_uint32
+        a = k.GetFileAttributesW(str(p))
+        if a == 0xFFFFFFFF:
+            return
+        novo = (a | 0x2) if sim else (a & ~0x2)
+        if novo != a:
+            k.SetFileAttributesW(str(p), novo or 0x80)
+    except Exception:
+        pass
+
+
+def zim_md5_certo(p, andamento=None):
+    """Confere a soma de verificação (MD5) que todo ZIM guarda nos últimos 16 bytes. Pega arquivo
+    estragado no meio, que o tamanho certo não pega. Lê o arquivo inteiro: leva alguns minutos por
+    100 GB num SSD rápido. andamento(lidos, total) é chamada a cada ~1 GB. ZIM sem soma: vale como certo."""
+    import hashlib
+    import struct
+    try:
+        tam = os.path.getsize(p)
+        with open(p, 'rb') as f:
+            cab = f.read(80)
+            if len(cab) < 80 or cab[:4] != b'ZIM\x04':
+                return False
+            pos = struct.unpack_from('<Q', cab, 72)[0]
+            if not pos:
+                return True
+            if pos + 16 != tam:
+                return False
+            f.seek(0)
+            h, resta, lidos, aviso = hashlib.md5(), pos, 0, 0
+            while resta:
+                bloco = f.read(min(8 << 20, resta))
+                if not bloco:
+                    return False
+                h.update(bloco)
+                resta -= len(bloco)
+                lidos += len(bloco)
+                if andamento and lidos - aviso >= 1 << 30:
+                    aviso = lidos
+                    andamento(lidos, pos)
+            return h.digest() == f.read(16)
+    except (OSError, struct.error):
+        return False
+
+
+def marcar_ok(destino, texto):
+    """Grava a marca destino.ok (o arquivo terminou de baixar; a 1ª linha é o endereço de origem) como
+    arquivo oculto. Arquivo oculto não pode ser regravado direto no Windows: desoculta antes."""
+    ok = destino + '.ok'
+    if os.path.exists(ok):
+        ocultar(ok, False)
+    with open(ok, 'w', encoding='utf-8') as f:
+        f.write(texto)
+    ocultar(ok)
+
+
 def achar_curl():
     if _curl['achado']:
         return _curl['caminho']

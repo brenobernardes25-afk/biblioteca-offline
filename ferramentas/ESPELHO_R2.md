@@ -30,18 +30,18 @@ Os arquivos são os mesmos publicados pelas fontes, **sem alteração**. **Nada 
 
 - **Ministério da Saúde** (bvsms.saude.gov.br): "é permitida a reprodução parcial ou total desta obra, desde que citada a fonte e que não seja para venda".
 - **SciELO Livros** (books.scielo.org): acesso aberto, com a licença Creative Commons de cada obra.
-- **Embrapa** (Infoteca-e): publicações da Embrapa, com crédito à fonte.
-- **Exército Brasileiro** (bdex.eb.mil.br): "É permitida a reprodução do conteúdo da obra desde que seja, obrigatoriamente, citada a fonte. É proibida a reprodução para fins comerciais, bem como qualquer alteração no conteúdo da obra."
+- **Embrapa** (Infoteca-e): publicações da Embrapa; os direitos são da Embrapa e dos autores.
+- **Exército Brasileiro** (bdex.eb.mil.br): o aviso varia de obra para obra e está na ficha de cada uma. O mais comum: "É permitida a reprodução do conteúdo da obra desde que seja, obrigatoriamente, citada a fonte. É proibida a reprodução para fins comerciais, bem como qualquer alteração no conteúdo da obra."
 - **Mapas:** © colaboradores do OpenStreetMap, licença ODbL.
 - **Modelos Qwen3** (Alibaba Cloud): licença Apache 2.0.
-- **Hesperian Health Guides:** distribuição gratuita, com crédito à fonte.
+- **Hesperian Health Guides:** os direitos são da Hesperian.
 
 A mesma lista fica no próprio servidor, em `index.html` (enviada com `espelho_r2.py creditos`).
 
 ## Como funciona
 
 1. `python ferramentas/espelho_r2.py lista` mostra o que vai, quanto ocupa, o que falta no HD e o custo do mês.
-2. `configurar` pede os dados do R2. Eles ficam só no PC, em `%APPDATA%\BibliotecaOffline`, e nunca vão para o repositório.
+2. `configurar` pede os dados do R2. Eles ficam só no PC, em `%USERPROFILE%\.biblioteca_offline`, e nunca vão para o repositório.
 3. `enviar` manda do HD o que ainda não está no R2.
    - Antes de enviar, confere o SHA-256 da lista.
    - O R2 confere de novo na chegada.
@@ -69,6 +69,6 @@ O verificador semanal (`verificar_fontes.py`) testa até 8 mil arquivos do espel
 
 - Armazenamento: US$ 0,015 por GB por mês, com os primeiros 10 GB grátis.
 - Download: grátis.
-- O domínio próprio custa à parte (US$ 10,46 por ano para um .com no Cloudflare). Sem ele, o endereço r2.dev tem limite de velocidade e é só para testes.
+- O domínio próprio custa à parte (US$ 11,17 por ano para um .com no Cloudflare). Sem ele, o endereço r2.dev tem limite de velocidade e é só para testes.
 
 O total aparece em `espelho_r2.py lista`.

@@ -43,12 +43,14 @@ RAIZ_REPO = os.path.dirname(AQUI)
 INSTALADOR = os.path.join(RAIZ_REPO, 'computador', '_Baixador', 'instalador')
 MANIFESTO = os.path.join(INSTALADOR, 'manifesto.tsv.gz')
 ESPELHO_TSV = os.environ.get('ESPELHO_TSV') or os.path.join(INSTALADOR, 'espelho.tsv')
-PASTA_DADOS = os.environ.get('ESPELHO_DADOS') or os.path.join(os.environ.get('APPDATA') or os.path.expanduser('~'),
-                                                               'BibliotecaOffline')
+# Na pasta do usuário, e não em AppData: programas da loja do Windows enxergam uma AppData separada.
+PASTA_DADOS = os.environ.get('ESPELHO_DADOS') or os.path.join(os.path.expanduser('~'), '.biblioteca_offline')
 CONFIG = os.path.join(PASTA_DADOS, 'espelho_r2.json')            # chaves do R2: nunca vão para o repositório
+SEGURAR = os.path.join(AQUI, 'espelho_segurar.tsv')               # aviso contra redistribuir: só com decisão do Breno
 ENVIADOS = os.path.join(PASTA_DADOS, 'espelho_enviados.tsv')     # diário do que já subiu
 PARTES = os.path.join(PASTA_DADOS, 'espelho_partes.json')        # envios grandes pela metade
 
+PARAR = 30                  # tantas falhas seguidas do R2 ou da internet = para o envio
 PARTE = 64 * 2**20          # envios acima de 2 partes vão em pedaços de 64 MB (retomáveis)
 CUSTO_GB_MES = 0.015        # US$ por GB por mês (R2, armazenamento padrão); download não paga nada
 GRATIS_GB = 10
@@ -78,17 +80,18 @@ NOMES = {
 }
 CREDITOS = [
     ('Ministério da Saúde (Biblioteca Virtual em Saúde, bvsms.saude.gov.br)',
-     'Aviso das publicações: "é permitida a reprodução parcial ou total desta obra, desde que citada a fonte e que '
+     'Aviso usual das publicações: "é permitida a reprodução parcial ou total desta obra, desde que citada a fonte e que '
      'não seja para venda ou qualquer fim comercial".'),
     ('SciELO Livros (books.scielo.org)', 'Livros em acesso aberto, licença Creative Commons indicada em cada obra.'),
-    ('Embrapa (Infoteca-e, www.infoteca.cnptia.embrapa.br)', 'Publicações da Embrapa, com crédito à fonte.'),
+    ('Embrapa (Infoteca-e, www.infoteca.cnptia.embrapa.br)', 'Publicações da Embrapa. Os direitos são da Embrapa e dos autores.'),
     ('Exército Brasileiro (Biblioteca Digital do Exército, bdex.eb.mil.br)',
-     'Aviso dos manuais: "É permitida a reprodução do conteúdo da obra desde que seja, obrigatoriamente, citada a '
-     'fonte. É proibida a reprodução para fins comerciais, bem como qualquer alteração no conteúdo da obra."'),
+     'O aviso de licença varia de obra para obra e está na ficha de cada uma na BDEx. O mais comum: "É permitida a '
+     'reprodução do conteúdo da obra desde que seja, obrigatoriamente, citada a fonte. É proibida a reprodução para '
+     'fins comerciais, bem como qualquer alteração no conteúdo da obra."'),
     ('Mapas: Organic Maps e Mapsforge, dados do OpenStreetMap',
      '© colaboradores do OpenStreetMap, licença ODbL (openstreetmap.org/copyright).'),
     ('Modelos de IA Qwen3 (Alibaba Cloud), via Hugging Face', 'Licença Apache 2.0.'),
-    ('Hesperian Health Guides (hesperian.org)', 'Materiais de saúde de distribuição gratuita, com crédito à fonte.'),
+    ('Hesperian Health Guides (hesperian.org)', 'Guias de saúde da Hesperian. Os direitos são da Hesperian.'),
     ('Internet Archive (web.archive.org)', 'Cópias arquivadas das páginas originais, de onde parte dos PDFs veio.'),
 ]
 TIPOS = {'.pdf': 'application/pdf', '.epub': 'application/epub+zip', '.zip': 'application/zip',
@@ -125,7 +128,16 @@ def ler_manifesto(caminho=MANIFESTO):
 def escolher(itens):
     """(vão, ficam_de_fora). Cada item que vai ganha 'grupo' e 'host'."""
     vao, fora = [], []
+    segurar = set()
+    try:
+        with open(SEGURAR, encoding='utf-8') as f:
+            segurar = {l.split('\t')[0].strip() for l in f if l.strip() and not l.startswith('#')}
+    except OSError:
+        pass
     for i in itens:
+        if i['rel'].rsplit('/', 1)[-1] in segurar:
+            fora.append((i, 'esperando decisão (espelho_segurar.tsv)'))
+            continue
         host, arquivado = origem(i['url'])
         real = urllib.parse.urlsplit(i['url']).netloc.lower()
         if real in FORA:
@@ -314,7 +326,7 @@ class R2:
             token = raiz.findtext(ns + 'NextContinuationToken')
 
 
-def ler_config():
+def config():
     try:
         with open(CONFIG, encoding='utf-8') as f:
             cfg = json.load(f)
@@ -322,6 +334,13 @@ def ler_config():
             return cfg
     except (OSError, ValueError):
         pass
+    return None
+
+
+def ler_config():
+    cfg = config()
+    if cfg:
+        return cfg
     sys.exit('Falta configurar o R2. Rode:  python ferramentas/espelho_r2.py configurar')
 
 
@@ -337,11 +356,11 @@ def cmd_configurar(a):
     perguntas = [('conta', 'ID da conta (Account ID, 32 letras e números)'),
                  ('balde', 'Nome do balde (bucket), ex.: biblioteca-offline'),
                  ('publico', 'Endereço público do balde, ex.: https://arquivos.seudominio.com'),
-                 ('chave', 'Access Key ID do token'), ('segredo', 'Secret Access Key do token (não aparece ao digitar)')]
+                 ('chave', 'Access Key ID do token (não aparece ao colar)'), ('segredo', 'Secret Access Key do token (não aparece ao colar)')]
     for k, texto in perguntas:
         atual = cfg.get(k, '')
-        mostra = '' if not atual else (' [Enter mantém o atual]' if k == 'segredo' else ' [%s]' % atual)
-        v = (getpass.getpass if k == 'segredo' else input)('%s%s: ' % (texto, mostra)).strip()
+        mostra = '' if not atual else (' [Enter mantém o atual]' if k in ('chave', 'segredo') else ' [%s]' % atual)
+        v = (getpass.getpass if k in ('chave', 'segredo') else input)('%s%s: ' % (texto, mostra)).strip()
         if v:
             cfg[k] = v.rstrip('/') if k == 'publico' else v
     os.makedirs(PASTA_DADOS, exist_ok=True)
@@ -391,7 +410,7 @@ def gravar_partes(estado):
     with _trava:
         tmp = PARTES + '.tmp'
         with open(tmp, 'w', encoding='utf-8') as f:
-            json.dump(estado, f)
+            f.write(json.dumps(estado))
         os.replace(tmp, PARTES)
 
 
@@ -481,15 +500,45 @@ def enviar_um(r2, hd, item, partes):
     return 'ok'
 
 
+def nao_dormir(sim):
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000001 if sim else 0x80000000)
+    except (AttributeError, OSError):
+        pass
+
+
+def esperar_chave():
+    """Espera o "configurar" terminar e o balde aceitar a chave."""
+    print('Esperando a chave do R2 (aba "Configurar R2"). O envio começa sozinho.', flush=True)
+    avisou = False
+    while True:
+        cfg = config()
+        if cfg:
+            st, _, _ = R2(cfg).pedir('GET', None, {'list-type': '2', 'max-keys': '1'})
+            if st == 200:
+                print('Chave aceita.', flush=True)
+                return
+            if not avisou:
+                print('O R2 recusou a chave (%d). Rode "configurar" de novo; continuo esperando.' % st, flush=True)
+                avisou = True
+        time.sleep(10)
+
+
 def cmd_enviar(a):
+    if a.esperar:
+        esperar_chave()
+        cmd_creditos(a)
     cfg = ler_config()
     r2 = R2(cfg)
+    nao_dormir(True)
     vao, _ = escolher(ler_manifesto(a.manifesto))
     if a.grupo:
         vao = [i for i in vao if i['grupo'] in a.grupo]
     feitos = ler_enviados()
     fila = [i for i in vao if feitos.get(i['rel'], (None,))[0] != i['tam'] or not i['tam']]
-    fila.sort(key=lambda i: (i['grupo'] != 'saude', i['grupo'] != 'scielo', i['rel']))
+    ordem = ['saude', 'scielo', 'exercito', 'outros', 'hesperian', 'mapas', 'embrapa', 'ia']
+    fila.sort(key=lambda i: (ordem.index(i['grupo']), i['rel']))
     if a.limite:
         fila = fila[:a.limite]
     total = sum(i['tam'] for i in fila)
@@ -497,9 +546,12 @@ def cmd_enviar(a):
     partes = ler_partes()
     feito = [0, 0]
     problemas = []
+    seguidos = [0]
     inicio = time.time()
 
     def um(item):
+        if seguidos[0] >= PARAR:
+            return 'parado'
         try:
             res = enviar_um(r2, a.hd, item, partes)
         except Exception as e:      # noqa: BLE001 - segue com os outros e conta no fim
@@ -508,7 +560,10 @@ def cmd_enviar(a):
             feito[0] += 1
             if res in ('ok', 'ja'):
                 feito[1] += item['tam']
+                seguidos[0] = 0
             else:
+                if 'HD' not in res:        # problema do arquivo não para o envio; do R2 ou da internet, sim
+                    seguidos[0] += 1
                 problemas.append((item['rel'], res))
             if feito[0] % 25 == 0 or feito[0] == len(fila) or item['tam'] > 50e6:
                 passou = time.time() - inicio
@@ -520,7 +575,11 @@ def cmd_enviar(a):
 
     with concurrent.futures.ThreadPoolExecutor(a.tarefas) as ex:
         list(ex.map(um, fila))
-    print('\nPronto: %d enviados, %d com problema.' % (len(fila) - len(problemas), len(problemas)))
+    nao_dormir(False)
+    if seguidos[0] >= PARAR:
+        print('\nPAREI: %d falhas seguidas. Rode de novo: continua de onde parou.' % PARAR)
+    print('\nFim desta rodada: %d no R2, %d com problema, %d não tentados.' % (
+        feito[0] - len(problemas), len(problemas), len(fila) - feito[0]))
     if problemas:
         arq = os.path.join(PASTA_DADOS, 'espelho_problemas.tsv')
         with open(arq, 'w', encoding='utf-8') as f:
@@ -612,7 +671,7 @@ def pagina_creditos():
             '<style>body{font-family:system-ui,sans-serif;max-width:46rem;margin:2rem auto;padding:0 1rem;line-height:1.5;'
             'color:#222;background:#fff}li{margin:.8rem 0}</style>'
             '<h1>Biblioteca Offline: fontes e créditos</h1>'
-            '<p>Este servidor guarda uma cópia de materiais públicos usados pela <a href="https://github.com/'
+            '<p>Este servidor guarda uma cópia de materiais oferecidos de graça na internet e usados pela <a href="https://github.com/'
             'brenobernardes25-afk/biblioteca-offline">Biblioteca Offline</a>, um projeto gratuito de Breno Paiva '
             '(Instagram @breno.paiva40), feito para ajudar as pessoas em tempos difíceis. Os arquivos são os mesmos '
             'publicados pelas fontes abaixo, sem alteração. <b>Nada aqui é vendido</b>; os direitos são de cada autor.</p>'
@@ -638,6 +697,7 @@ def main():
     ap.add_argument('--tarefas', type=int, default=3, help='envios ao mesmo tempo')
     ap.add_argument('--pacotes', default=os.path.join(RAIZ_REPO, 'celular', 'pacotes.json'),
                     help='(aplicar) lista do app do celular')
+    ap.add_argument('--esperar', action='store_true', help='(enviar) espera a chave ser configurada')
     ap.add_argument('--faltas', help='(lista) grava aqui o que falta no HD')
     a = ap.parse_args()
     if hasattr(sys.stdout, 'reconfigure'):

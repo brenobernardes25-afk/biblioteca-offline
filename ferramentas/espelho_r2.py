@@ -360,7 +360,14 @@ def cmd_configurar(a):
     for k, texto in perguntas:
         atual = cfg.get(k, '')
         mostra = '' if not atual else (' [Enter mantém o atual]' if k in ('chave', 'segredo') else ' [%s]' % atual)
-        v = (getpass.getpass if k in ('chave', 'segredo') else input)('%s%s: ' % (texto, mostra)).strip()
+        while True:
+            v = (getpass.getpass if k in ('chave', 'segredo') else input)('%s%s: ' % (texto, mostra)).strip()
+            certo = {'conta': 32, 'chave': 32, 'segredo': 64}.get(k)
+            if not certo or len(v or atual) == certo:
+                break
+            print('   Veio com %d letras; este código tem %d. Copie de novo pelo botão de copiar e cole uma vez só.'
+                  % (len(v or atual), certo))
+            mostra, atual = '', ''
         if v:
             cfg[k] = v.rstrip('/') if k == 'publico' else v
     os.makedirs(PASTA_DADOS, exist_ok=True)

@@ -69,6 +69,10 @@ def ler_listas():
                 if c[4] not in vistos:
                     vistos.add(c[4])
                     itens.append(('computador', c[2], c[4], int(c[3] or 0), c[1]))
+                # o site original (reserva) dos arquivos que vêm do nosso espelho: também tem que continuar no ar
+                if len(c) > 6 and 'arquivos.bibliotecaoffline.com/' in c[4] and c[6].startswith('http') and c[6] not in vistos:
+                    vistos.add(c[6])
+                    itens.append(('reserva', c[2], c[6], int(c[3] or 0), c[1]))
     if os.path.exists(PACOTES):
         with open(PACOTES, encoding='utf-8') as f:
             for i in json.load(f).get('itens', []):

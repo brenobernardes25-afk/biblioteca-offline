@@ -52,8 +52,8 @@ ORDEM DO QUE É BAIXADO (o mais importante primeiro)
      enciclopédias essenciais,
      mapas e instaladores
   Cada arquivo baixado é conferido (tamanho, SHA-256 e, nas enciclopédias, a soma de verificação
-  delas); se vier estragado, ele baixa de novo. Quando o site original falha, ele tenta o endereço
-  reserva (cópias guardadas no GitHub do projeto, ou o site original quando a cópia é que falha).
+  delas); se vier estragado, ele baixa de novo. A maior parte dos PDFs, mapas e IAs vem do servidor do
+  projeto; quando um endereço falha, ele tenta o reserva (o site original ou a cópia no GitHub).
   No fim ele ainda gera o mapa do Brasil para o PC e os textos religiosos.
   O conteúdo detalhado está em CONTEUDO.txt.
 

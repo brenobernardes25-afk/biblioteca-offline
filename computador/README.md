@@ -15,11 +15,12 @@ binários do Python portátil e do Visual C++, que vão só no zip.
 | `CONFERIR_BIBLIOTECA.bat` | Confere o que já foi baixado (inclusive o MD5 de cada ZIM) e oferece baixar de novo o que estiver estragado |
 | `COPIAR_RELATORIO.bat` | Monta um texto com a situação da instalação (sem dados pessoais) e deixa copiado, para pedir ajuda |
 | `COMECE_AQUI.html` | Guia rápido de uso, para depois de instalar |
-| `_Baixador/instalador/manifesto.tsv.gz` | **A lista da biblioteca**: os ~54 mil arquivos, com prioridade, tipo, caminho, tamanho e endereço de origem |
+| `_Baixador/instalador/manifesto.tsv.gz` | **A lista da biblioteca**: os ~54 mil arquivos, com prioridade, tipo, caminho, tamanho, endereço, SHA-256 e endereços reserva |
 | `_Baixador/instalador/categorias.py` | As categorias do menu "o que baixar" e a regra que põe cada arquivo numa delas |
 | `_Baixador/instalador/instalar.py` | O instalador: baixa por prioridade, retoma, confere cada arquivo |
 | `_Baixador/instalador/gerar_kit.py` | Gera o kit a partir de uma biblioteca instalada |
 | `_Baixador/instalador/gerar_catalogo.py` | Gera o `CATALOGO.html` e o `CATALOGO.csv` (lista legível de tudo o que está instalado) |
+| `_Baixador/instalador/espelho.tsv` e `espelho.py` | O que tem cópia no servidor do projeto ([detalhes](../ferramentas/ESPELHO_R2.md)) |
 | `_Baixador/instalador/reservas.tsv` | Cópias nossas nos Releases do GitHub (endereço reserva de cada arquivo frágil) |
 | `_Baixador/instalador/atalho/` | Fonte e ícone do atalho `ABRIR BIBLIOTECA.exe`, compilado no próprio PC no fim da instalação |
 | `_Baixador/atualizar.py` | A atualização pela internet (botão do app), que respeita as categorias escolhidas |

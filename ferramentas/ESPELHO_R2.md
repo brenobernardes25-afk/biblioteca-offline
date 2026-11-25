@@ -56,6 +56,8 @@ Na lista do computador, um arquivo com cópia no espelho fica assim:
 
 Instaladores e apps antigos só leem até a 7ª coluna, e continuam funcionando.
 
+O app do celular (`pacotes.json`) usa um endereço só por arquivo: sem reserva. Se o espelho sair do ar, ele espera voltar.
+
 O instalador tenta, nesta ordem:
 1. o espelho;
 2. o site original;

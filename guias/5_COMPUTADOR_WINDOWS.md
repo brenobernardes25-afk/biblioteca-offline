@@ -33,7 +33,7 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
 
 ## Passo a passo
 
-1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-19.zip (30 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip)**.
+1. Baixe o kit: **[Kit_Biblioteca_Offline_2026-11-25.zip (30 MB)](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-25/Kit_Biblioteca_Offline_2026-11-25.zip)**.
 2. Ligue o HD/SSD vazio no computador.
 3. Clique com o botão direito no zip › **Extrair tudo…**.
    - Em **"Os arquivos serão extraídos para esta pasta"**, escolha a **raiz** do HD/SSD, por exemplo `E:\`.
@@ -58,8 +58,7 @@ Se você quer usar o mesmo SSD no celular, ele precisa estar em **exFAT**. Muito
      Energia). Se ele dormir, o download para.
    - **Quanto tempo leva:** depende da internet. Tudo (~830 GB) leva de 3 a 5 dias com uma internet boa.
      Sem a Survivor Library e a literatura em inglês, cai para uns 475 GB.
-   - **A ordem é de propósito:** primeiro o essencial; os PDFs que vêm de um servidor lento (web.archive.org)
-     e os dois arquivos gigantes (Survivor Library, 205 GB, e Wikipédia em inglês, 119 GB) ficam por último.
+   - **A ordem é de propósito:** primeiro o essencial; os dois arquivos gigantes (Survivor Library, 205 GB, e Wikipédia em inglês, 119 GB) ficam por último.
      Enquanto um gigante baixa, o número de arquivos fica parado por horas: é normal, olhe os GB.
    - **Se fechar, faltar luz ou cair a internet:** dê dois cliques de novo. Ele continua de onde parou e
      não baixa nada duas vezes.
@@ -80,6 +79,12 @@ Dentro do kit, o `LEIA-ME_PRIMEIRO.txt` explica tudo de novo, e o menu **Ajuda**
 
 ## Já instalou antes?
 
+### Faltaram PDFs do Ministério da Saúde, da SciELO ou da Embrapa (kits até 19/11/2026)
+
+O web.archive.org e alguns sites bloqueiam quem baixa muito. No kit de 25/11, a maior parte dos PDFs, dos mapas e
+das IAs vem do **servidor do projeto**, e o site original fica como reserva. Para atualizar, faça os 3 passos de "Corrigir os PDFs
+cortados", logo abaixo: ele baixa só o que falta.
+
 ### Download parado, muito lento ou com "FALHOU" (kits até 08/11/2026)
 
 O kit de 15/11 corrige o que vocês encontraram:
@@ -98,7 +103,7 @@ Para atualizar, faça os 3 passos de "Corrigir os PDFs cortados", logo abaixo. N
 Os kits até 05/11/2026 traziam 943 PDFs cortados no meio: saúde, livros da SciELO e alguns da Embrapa.
 Não precisa começar de novo:
 
-1. Baixe o [kit mais recente](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip).
+1. Baixe o [kit mais recente](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-25/Kit_Biblioteca_Offline_2026-11-25.zip).
 2. Descompacte na **raiz** do HD, onde está o `INSTALAR_BIBLIOTECA.bat`, e escolha **substituir os arquivos**.
 3. Rode o `INSTALAR_BIBLIOTECA.bat`. Na primeira vez com o kit novo, ele pergunta o que baixar: tecle **ENTER**
    para continuar com tudo. Depois ele baixa só o que estava cortado (cerca de 12 GB).

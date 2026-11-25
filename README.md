@@ -50,11 +50,12 @@ Precisa de Android 8 ou mais novo. iPhone não funciona.
 
 - **O app do celular:** [Biblioteca_de_Bolso_1.2.8.apk](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.2.8/Biblioteca_de_Bolso_1.2.8.apk) (47 MB).
 - **Baixar o Slim no computador e passar para o celular:** [Preparar_Celular.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/celular-v1.0.0/Preparar_Celular.zip) (0,2 MB).
-- **Instalar a biblioteca completa no computador:** [Kit_Biblioteca_Offline_2026-11-19.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-19/Kit_Biblioteca_Offline_2026-11-19.zip) (30 MB).
+- **Instalar a biblioteca completa no computador:** [Kit_Biblioteca_Offline_2026-11-25.zip](https://github.com/brenobernardes25-afk/biblioteca-offline/releases/download/v2026-11-25/Kit_Biblioteca_Offline_2026-11-25.zip) (30 MB).
 
 Os arquivos são pequenos porque não levam o conteúdo: o app e os programas baixam cada livro e
-enciclopédia direto das fontes originais (Kiwix, Embrapa, SciELO, Hesperian, Biblioteca Digital do
-Exército e outras).
+enciclopédia da internet. As enciclopédias vêm direto do Kiwix; a maior parte dos PDFs, mapas e IAs vem do servidor
+do projeto ou da cópia nos Releases do GitHub, e o instalador do computador usa o site original como reserva.
+[Fontes e créditos](ferramentas/ESPELHO_R2.md#fontes-e-créditos).
 
 ## Manual de Sobrevivência Brasil (PDF gratuito)
 

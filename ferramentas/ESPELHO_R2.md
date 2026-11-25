@@ -67,6 +67,28 @@ Se um servidor falha 8 vezes seguidas, ele vai para o fim da fila nesta rodada. 
 
 O verificador semanal (`verificar_fontes.py`) testa até 8 mil arquivos do espelho por semana.
 
+## Pen drive: consertos e novidades
+
+No pen drive, o botão **Atualizar pela internet** não roda os baixadores do HD completo, porque eles trariam a Embrapa inteira e encheriam o pen drive. No lugar deles entra o `computador/_Baixador/pendrive.py`, que faz três coisas:
+
+1. **Conserta.** O que está na lista de fábrica (`App/dados/lista_de_fabrica.tsv`) e sumiu ou ficou com tamanho errado é baixado de novo. Ele tenta primeiro o espelho e depois o site original.
+2. **Baixa novidades.** Traz o que estiver em `pendrive/novidades.tsv` no servidor e ainda não estiver igual no pen drive. Serve também para trocar um arquivo por uma versão nova, no mesmo caminho.
+3. **Acerta a lista das enciclopédias.** Quando uma enciclopédia é trocada por uma versão nova, ela entra na lista de fábrica no lugar da antiga.
+
+Tudo que chega é conferido pelo SHA-256 antes de entrar no lugar e vai para a lista de fábrica, que o "3 - VERIFICAR" confere.
+
+Para mandar uma novidade a todos os pen drives (o arquivo precisa estar na biblioteca do HD, no caminho em que vai ficar):
+
+    python ferramentas/espelho_r2.py novidade 5_Acervo/Saude/Manual_novo.pdf
+    python ferramentas/espelho_r2.py novidade --tirar 5_Acervo/Saude/Manual_novo.pdf
+
+O comando envia o arquivo ao R2 e põe a linha na lista de novidades. Sem a lista no servidor, o pen drive só conserta.
+
+O que não tem cópia na internet não é consertado. A tela mostra "sem cópia" e pede o "3 - VERIFICAR". Hoje isso vale para três grupos:
+- os livros tirados da Survivor Library;
+- o mapa `brasil.pmtiles`;
+- os brindes, os programas e os índices.
+
 ## Custo
 
 - Armazenamento: US$ 0,015 por GB por mês, com os primeiros 10 GB grátis.

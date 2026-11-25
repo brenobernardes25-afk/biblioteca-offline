@@ -15,6 +15,9 @@ Roda no PC que tem a biblioteca completa (o HD), e só usa a biblioteca padrão 
     python ferramentas/espelho_r2.py conferir               confere o que está no R2 e grava espelho.tsv
     python ferramentas/espelho_r2.py aplicar                põe o espelho na lista do PC e na do celular
     python ferramentas/espelho_r2.py creditos               envia a página de fontes e créditos
+    python ferramentas/espelho_r2.py novidade CAMINHO...    novidade para os PEN DRIVES: envia o arquivo e põe
+                                                            na lista pendrive/novidades.tsv (o "Atualizar" do
+                                                            pen drive baixa); --tirar CAMINHO... tira da lista
 
 Antes de enviar, cada arquivo é conferido pelo SHA-256 da lista (manifesto). O R2 também confere: o envio
 vai assinado com o SHA-256 do conteúdo, e o servidor recusa se chegar diferente.
@@ -697,9 +700,60 @@ def cmd_creditos(a):
         print(nome, 'ok' if st == 200 else 'R2 recusou (%d): %s' % (st, resp[:200]))
 
 
+NOVIDADES = 'pendrive/novidades.tsv'
+
+
+def ler_novidades(r2):
+    st, _, dados = r2.pedir('GET', NOVIDADES)
+    if st == 404:
+        return []
+    if st != 200:
+        sys.exit('Não consegui ler %s do R2 (%d).' % (NOVIDADES, st))
+    return [l.split('\t') for l in dados.decode('utf-8-sig').splitlines() if l.strip() and not l.startswith('#')]
+
+
+def cmd_novidade(a):
+    """Novidades dos pen drives: o arquivo vai para o R2 no mesmo caminho da biblioteca, e uma linha
+    "sha256<TAB>tamanho<TAB>caminho" vai para pendrive/novidades.tsv. O botão "Atualizar pela internet" do pen
+    drive baixa o que estiver na lista e ainda não estiver igual nele (conferindo o SHA-256). Serve também para
+    trocar um arquivo que o pen drive já tem por uma versão nova (mesmo caminho)."""
+    if not a.caminhos:
+        sys.exit('Diga os arquivos, com o caminho dentro da biblioteca, ex.: 5_Acervo/Saude/Manual_novo.pdf')
+    r2 = R2(ler_config())
+    linhas = {c[2]: c for c in ler_novidades(r2) if len(c) >= 3}
+    rels = [c.replace('\\', '/').strip('/') for c in a.caminhos]
+    if a.tirar:
+        for rel in rels:
+            print(('tirado da lista: ' if linhas.pop(rel, None) else 'não estava na lista: ') + rel)
+    else:
+        partes = ler_partes()
+        for rel in rels:
+            if '..' in rel.split('/') or ':' in rel:
+                sys.exit('Caminho tem que ser de dentro da biblioteca: %s' % rel)
+            p = no_hd(a.hd, rel)
+            if not os.path.isfile(p):
+                sys.exit('Não achei %s' % p)
+            sha = sha256_arquivo(p)
+            res = enviar_um(r2, a.hd, {'rel': rel, 'tam': os.path.getsize(p), 'sha': sha}, partes)
+            if res not in ('ok', 'ja'):
+                sys.exit('%s: %s' % (rel, res))
+            linhas[rel] = [sha, str(os.path.getsize(p)), rel]
+            print('%s: %s (%.1f MB)' % ('enviado' if res == 'ok' else 'já estava no R2', rel, os.path.getsize(p) / 1e6))
+    corpo = ('# Novidades para os pen drives da Biblioteca Offline (ferramentas/espelho_r2.py novidade). '
+             'sha256, tamanho, caminho [, endereco]\n' +
+             ''.join('\t'.join(c) + '\n' for _, c in sorted(linhas.items()))).encode('utf-8')
+    st, _, resp = r2.pedir('PUT', NOVIDADES, corpo=corpo, cab={'content-type': 'text/plain; charset=utf-8',
+                                                               'cache-control': 'no-cache'})
+    if st != 200:
+        sys.exit('R2 recusou a lista (%d): %s' % (st, resp[:200]))
+    print('Lista de novidades no servidor: %d arquivos (%s/%s).' % (len(linhas), ler_config()['publico'], NOVIDADES))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('acao', choices=['lista', 'configurar', 'enviar', 'conferir', 'aplicar', 'creditos'])
+    ap.add_argument('acao', choices=['lista', 'configurar', 'enviar', 'conferir', 'aplicar', 'creditos', 'novidade'])
+    ap.add_argument('caminhos', nargs='*', help='(novidade) arquivos, com o caminho dentro da biblioteca')
+    ap.add_argument('--tirar', action='store_true', help='(novidade) tira os arquivos da lista de novidades')
     ap.add_argument('--hd', default='D:\\', help='onde está a biblioteca completa')
     ap.add_argument('--manifesto', default=MANIFESTO)
     ap.add_argument('--grupo', nargs='*', help='só estes grupos: ' + ', '.join(NOMES))
@@ -713,7 +767,7 @@ def main():
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     {'lista': cmd_lista, 'configurar': cmd_configurar, 'enviar': cmd_enviar, 'conferir': cmd_conferir,
-     'aplicar': cmd_aplicar, 'creditos': cmd_creditos}[a.acao](a)
+     'aplicar': cmd_aplicar, 'creditos': cmd_creditos, 'novidade': cmd_novidade}[a.acao](a)
 
 
 if __name__ == '__main__':

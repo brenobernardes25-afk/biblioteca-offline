@@ -5,6 +5,8 @@ Partes:
           se couber (sobrando RESERVA_GB), baixa a nova e depois apaga a antiga.
   acervo  livros e manuais: novidades da Embrapa e do Exercito (so o que entrou desde a ultima coleta),
           SciELO/Ministerio da Saude (tenta de novo o que faltou) e capitulos novos da Hesperian.
+          No PEN DRIVE (selecao feita a mao) e outra coisa: conserta o que sumiu ou estragou e traz as
+          novidades do nosso servidor (ver pendrive.py). Os baixadores do HD completo encheriam o pen drive.
 
 Uso:  python atualizar.py --verificar            (so mostra o que ha de novo; nao baixa)
       python atualizar.py [--partes zims,acervo]  (atualiza)
@@ -37,6 +39,9 @@ SEM_JANELA = 0x08000000 if os.name == 'nt' else 0
 
 sys.path.insert(0, AQUI)
 import baixar_conhecimento as bc  # noqa: E402  (catalogo do Kiwix e conferencia de ZIM completo)
+import pendrive  # noqa: E402  (no pen drive, "livros e manuais" = consertar e novidades do nosso servidor)
+
+PEN_DRIVE = pendrive.e_pen_drive(RAIZ)
 
 estado = {}
 
@@ -296,12 +301,20 @@ def main():
             resultado['livre_gb'] = round(livre() / 2**30, 1)
             escreve('Verificação: %d enciclopédias com versão nova (%d cabem agora).'
                     % (len(novos), sum(1 for n in novos if n['cabe'])))
+            if PEN_DRIVE:
+                gravar_estado(etapa='Conferindo o pen drive')
+                resultado['pen_drive'] = pendrive.verificar(escreve)
         else:
             if 'zims' in partes:
                 gravar_estado(etapa='Enciclopédias')
                 resultado['zims'] = atualizar_zims()
+                if PEN_DRIVE:
+                    pendrive.acertar_zims(resultado['zims']['atualizadas'], estado.get('remover', []), escreve)
             if 'acervo' in partes:
-                resultado['acervo'] = atualizar_acervo()
+                if PEN_DRIVE:   # seleção feita à mão: conserta e traz as novidades do nosso servidor
+                    resultado['acervo'] = pendrive.atualizar(RESERVA_GB, escreve, gravar_estado)
+                else:
+                    resultado['acervo'] = atualizar_acervo()
             resultado['livre_gb'] = round(livre() / 2**30, 1)
             estado['ultima_atualizacao'] = time.strftime('%Y-%m-%d %H:%M')
             escreve('Atualização concluída.')

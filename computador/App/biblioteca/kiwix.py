@@ -521,9 +521,16 @@ def _por_significado(consulta, n, idiomas):
         log.warning('busca por significado nas enciclopédias: %s', e)
         return []
     por_id = {b['id']: b for b in _estado['livros']}
+    # enciclopédia trocada por uma versão nova (botão Atualizar): o código muda, o nome fica; os caminhos dos
+    # artigos quase sempre continuam iguais (o que sumiu na versão nova só não traz texto)
+    por_nome = {}
+    for b in _estado['livros']:
+        por_nome.setdefault(b['nome'], []).append(b)
     saida, vistos = [], set()
     for a in achados:
         b = por_id.get(a['livro_id'])
+        if b is None and len(por_nome.get(a['livro'], [])) == 1:
+            b = por_nome[a['livro']][0]
         if b is None or b['secundario'] or b['idioma'] not in idiomas:
             continue
         chave = (a['titulo'].lower(), b['titulo'])

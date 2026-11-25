@@ -47,6 +47,7 @@ def estado():
         e['resultado'] = None
     e['rodando'] = rodando
     e['disponivel'] = disponivel()
+    e['pen_drive'] = config.PEN_DRIVE
     e['depois'] = _pos['mensagem']
     return e
 

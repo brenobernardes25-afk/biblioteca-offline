@@ -660,7 +660,13 @@ function resumoAtualizacao(e) {
       return '<tr><td>' + esc(nomeZim(x.arquivo)) + '<br><small class="meta">' + esc(x.data_atual) + ' → ' + esc(x.data_nova) + '</small></td>' +
         '<td class="meta">' + x.gb.toLocaleString('pt-BR') + ' GB</td><td>' + (x.cabe ? 'cabe' : '<span class="erro">falta espaço</span>') + '</td></tr>';
     }).join('') + '</table>';
-    h += '<p class="meta">Livros e manuais novos (Embrapa, Exército, Ministério da Saúde, Hesperian) são procurados na hora de atualizar.</p>';
+    var pd = r.pen_drive;
+    if (pd) {
+      if (!pd.servidor_ok) h += '<p class="erro">Não consegui falar com o nosso servidor agora; tente de novo mais tarde.</p>';
+      h += '<p>Novidades para o pen drive: <b>' + pd.novidades + '</b>. Arquivos para consertar: <b>' + pd.consertar + '</b>' +
+        (pd.gb ? ' (' + pd.gb.toLocaleString('pt-BR') + ' GB no total)' : '') + '.</p>';
+      if (pd.sem_copia) h += '<p class="meta">' + pd.sem_copia + ' arquivos com problema não têm cópia na internet: rode o "3 - VERIFICAR" e fale com quem te forneceu o pen drive.</p>';
+    } else h += '<p class="meta">Livros e manuais novos (Embrapa, Exército, Ministério da Saúde, Hesperian) são procurados na hora de atualizar.</p>';
   } else {
     var zz = r.zims, ac = r.acervo;
     h += '<p><b>Atualizado em ' + esc(e.fim || '') + '.</b></p><ul>';
@@ -669,7 +675,12 @@ function resumoAtualizacao(e) {
       if (zz.sem_espaco.length) h += '<li class="erro">Ficaram para depois por falta de espaço: ' + esc(zz.sem_espaco.map(nomeZim).join(', ')) + '</li>';
       if (zz.falhas.length) h += '<li class="erro">Não baixaram (tente de novo): ' + esc(zz.falhas.map(nomeZim).join(', ')) + '</li>';
     }
-    if (ac) {
+    if (ac && ac.pen_drive) {
+      h += '<li>Novidades baixadas: <b>' + ac.novos_arquivos + '</b></li><li>Arquivos consertados: <b>' + ac.consertados + '</b></li>';
+      if (ac.sem_espaco.length) h += '<li class="erro">Ficaram para depois por falta de espaço: ' + ac.sem_espaco.length + ' arquivos</li>';
+      if (ac.sem_copia.length) h += '<li class="erro">Sem cópia na internet (fale com quem te forneceu o pen drive): ' + esc(ac.sem_copia.slice(0, 5).join(', ')) + (ac.sem_copia.length > 5 ? ' e mais ' + (ac.sem_copia.length - 5) : '') + '</li>';
+      if (ac.erros.length) h += '<li class="erro">Com problema: ' + esc(ac.erros.join(', ')) + ' (tente de novo depois)</li>';
+    } else if (ac) {
       h += '<li>Livros e manuais novos: <b>' + ac.novos_arquivos + '</b></li>';
       if (ac.erros.length) h += '<li class="erro">Com problema: ' + esc(ac.erros.join(', ')) + ' (tente de novo depois)</li>';
     }
@@ -684,7 +695,11 @@ function desenharAtualizacao() {
     var el = $('#cartao-atu');
     if (!el) return;
     if (!e.disponivel) { el.innerHTML = '<p class="vazio">Falta o arquivo _Baixador\\atualizar.py.</p>'; return; }
-    var h = '<p class="meta">Quando houver internet: procura versões novas das enciclopédias e livros e manuais novos ' +
+    var h = e.pen_drive ?
+      '<p class="meta">Quando houver internet: procura versões novas das enciclopédias, baixa as novidades do pen drive ' +
+      'do nosso servidor e conserta o que tiver sumido ou estragado. Tudo é conferido antes de entrar e já vai para a busca. ' +
+      'Se for interrompido, da próxima vez continua de onde parou.</p>' :
+      '<p class="meta">Quando houver internet: procura versões novas das enciclopédias e livros e manuais novos ' +
       '(Embrapa, Exército, Ministério da Saúde, SciELO, Hesperian), baixa o que couber no SSD e já coloca tudo na busca. ' +
       'Se for interrompido, da próxima vez continua de onde parou.</p>';
     if (e.ultima_atualizacao) h += '<p>Última atualização completa: <b>' + esc(e.ultima_atualizacao) + '</b></p>';
@@ -701,7 +716,7 @@ function desenharAtualizacao() {
       if (e.depois) h += '<p class="status-linha">' + esc(e.depois) + '</p>';
       if (!encaixando) h +=
         '<div class="campo linha"><input type="checkbox" id="atu-zims" checked><label for="atu-zims">Enciclopédias (versões novas)</label></div>' +
-        '<div class="campo linha"><input type="checkbox" id="atu-acervo" checked><label for="atu-acervo">Livros e manuais novos</label></div>' +
+        '<div class="campo linha"><input type="checkbox" id="atu-acervo" checked><label for="atu-acervo">' + (e.pen_drive ? 'Novidades e consertos do pen drive' : 'Livros e manuais novos') + '</label></div>' +
         '<p><button class="botao secundario" id="b-atu-verificar" type="button">Verificar o que há de novo</button> ' +
         '<button class="botao" id="b-atu-iniciar" type="button">Atualizar agora</button></p><p class="meta" id="atu-msg"></p>';
     }

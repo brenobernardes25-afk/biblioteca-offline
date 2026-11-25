@@ -121,7 +121,10 @@ def ler_manifesto(caminho=MANIFESTO):
             if len(c) < 5 or not c[4].startswith('http'):
                 continue
             sha = c[5].strip().lower() if len(c) > 5 else ''
-            itens.append({'rel': c[2], 'tam': int(c[3] or 0), 'url': c[4], 'sha': sha if len(sha) == 64 else ''})
+            url = c[4]
+            if len(c) > 6 and 'arquivos.bibliotecaoffline.com/' in url and c[6].startswith('http'):
+                url = c[6]      # já baixa do espelho: o site de origem está na reserva
+            itens.append({'rel': c[2], 'tam': int(c[3] or 0), 'url': url, 'sha': sha if len(sha) == 64 else ''})
     return itens
 
 

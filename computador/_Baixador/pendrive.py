@@ -269,23 +269,25 @@ def atualizar(reserva_gb, escreve=print, estado=lambda **k: None):
     escreve('Pen drive: %d novidades e %d arquivos para consertar.' % (len(novos), len(consertar)))
     r = {'pen_drive': True, 'novos_arquivos': 0, 'consertados': 0, 'sem_copia': [], 'sem_espaco': [], 'falhas': [],
          'erros': [] if nov is not None else ['lista de novidades do servidor']}
-    ultima_gravacao = time.time()
+    ultima_gravacao, mudou = time.time(), False
     for i, item in enumerate(fila, 1):
         estado(etapa='Pen drive: %d de %d' % (i, len(fila)), progresso=round(i / len(fila), 3))
         urls = enderecos(item['rel'], base, nomes, man, item['extra'], item['motivo'] == 'novidade')
         ok, motivo = baixar_item(item, urls, reserva_gb * 2**30, escreve)
         if ok:
             _trocar_na_lista(lista, item)
+            mudou = True
             r['novos_arquivos' if item['motivo'] == 'novidade' else 'consertados'] += 1
             escreve('%s: %s' % ('Novidade' if item['motivo'] == 'novidade' else 'Consertado', item['rel']))
         else:
             r['sem_copia' if motivo == 'sem cópia na internet' else 'sem_espaco' if motivo == 'sem espaço'
               else 'falhas'].append(item['rel'])
             escreve('Ficou faltando (%s): %s' % (motivo, item['rel']))
-        if time.time() - ultima_gravacao > 30:
+        if mudou and time.time() - ultima_gravacao > 30:
             gravar_lista(lista)
             ultima_gravacao = time.time()
-    gravar_lista(lista)
+    if mudou:
+        gravar_lista(lista)
     if r['falhas']:
         r['erros'].append('%d arquivos não baixaram' % len(r['falhas']))
     estado(progresso=None)
